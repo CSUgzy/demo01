@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'create_project_post_page.dart';
 
 class SelectPostTypePage extends StatelessWidget {
   const SelectPostTypePage({super.key});
@@ -148,10 +149,10 @@ class SelectPostTypePage extends StatelessWidget {
                 tags: ['找人才', '项目合作'],
                 gradientColors: projectCardGradient,
                 onTap: () {
-                  // TODO: 导航到项目发布页面
-                  // Navigator.push(context, MaterialPageRoute(
-                  //   builder: (context) => const CreateProjectPostPage(),
-                  // ));
+                  // 导航到项目发布页面
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (context) => const CreateProjectPostPage(),
+                  ));
                 },
               ),
               const SizedBox(height: 20),
