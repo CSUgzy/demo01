@@ -21,3 +21,12 @@ const List<String> predefinedDomains = [
   '人工智能与大数据应用',
   '出海与全球化业务',
 ]; 
+
+const List<String> projectStatusOptions = [
+  "创意阶段",
+  "产品研发中",
+  "已上线/内测",
+  "寻求融资",
+  "快速扩张期",
+  "其他"
+];
