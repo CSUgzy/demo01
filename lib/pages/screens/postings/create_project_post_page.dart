@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../../constants/predefined_tags.dart';
-import '../../constants/cooperation_options.dart';
-import '../../services/post_service.dart';
-import '../../widgets/custom_dropdown_select.dart';
+import '../../../constants/predefined_tags.dart';
+import '../../../constants/cooperation_options.dart';
+import '../../../services/post_service.dart';
+import '../../../widgets/custom_dropdown_select.dart';
 
 // 定义一些全局样式常量
 const Color borderColor = Color(0xFFE2E8F0); // 边框颜色 - 浅灰色

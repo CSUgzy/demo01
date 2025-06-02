@@ -8,7 +8,7 @@ import 'pages/screens/profile_setup/step1_basic_info_page.dart';
 import 'pages/screens/profile_setup/step2_core_skills_page.dart';
 import 'pages/screens/profile_setup/step3_cooperation_intent_page.dart';
 import 'widgets/main_navigation_wrapper.dart';
-import 'screens/postings/select_post_type_page.dart';
+import 'pages/screens/postings/select_post_type_page.dart';
 
 void main() {
   // 初始化 LeanCloud

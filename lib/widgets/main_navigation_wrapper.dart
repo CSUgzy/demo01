@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../screens/home/home_page_placeholder.dart';
-import '../screens/profile/profile_page_placeholder.dart';
-import '../screens/postings/select_post_type_page.dart';
+import '../pages/screens/home/home_page.dart';
+import '../pages/screens/profile/profile_page_placeholder.dart';
+import '../pages/screens/postings/select_post_type_page.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -16,7 +16,7 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
   
   // Tab对应的页面列表
   final List<Widget> _pages = [
-    const HomePagePlaceholder(),
+    const HomePage(),
     const ProfilePagePlaceholder(),
   ];
 
