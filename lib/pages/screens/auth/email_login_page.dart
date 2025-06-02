@@ -173,7 +173,7 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
 
                     // 标题和副标题
                     Text(
-                      '良师益有',
+                      '良师益友',
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:leancloud_storage/leancloud.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'pages/screens/auth/email_registration_page.dart';
 import 'pages/screens/auth/email_login_page.dart';
 import 'pages/screens/auth/email_forgot_password_page.dart';
@@ -19,6 +20,9 @@ void main() {
     queryCache: LCQueryCache(),
   );
   
+  // 初始化timeago中文支持
+  timeago.setLocaleMessages('zh_CN', timeago.ZhCnMessages());
+  
   runApp(const MyApp());
 }
 
@@ -28,7 +32,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ShadApp.material(
-      title: '良师益有',
+      title: '良师益友',
       materialThemeBuilder: (context, theme) {
         return ThemeData(
           colorScheme: ColorScheme.light(

@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:leancloud_storage/leancloud.dart';
 import '../../../models/project_post_model.dart';
 import '../../../models/talent_post_model.dart';
 import '../../../services/feed_service.dart';
+import '../../../widgets/home/project_post_card.dart';
+import '../../../widgets/home/talent_post_card.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -111,85 +114,38 @@ class _HomePageState extends State<HomePage> {
 
   // 构建项目帖子卡片
   Widget _buildProjectPostCard(ProjectPost post) {
-    // 临时实现，后续会创建专门的ProjectPostCard组件
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.business, color: Colors.blue),
-                const SizedBox(width: 8.0),
-                Text(
-                  '项目: ${post.projectName}',
-                  style: const TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            Text(post.projectIntro),
-            const SizedBox(height: 8.0),
-            Wrap(
-              spacing: 8.0,
-              children: post.projectTags.map((tag) => Chip(
-                label: Text(tag),
-                backgroundColor: Colors.blue.withOpacity(0.1),
-              )).toList(),
-            ),
-          ],
-        ),
-      ),
+    return ProjectPostCard(
+      projectPost: post,
+      onTap: () {
+        // TODO: 导航到项目详情页面
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('项目详情页面将在后续实现')),
+        );
+      },
     );
   }
 
   // 构建人才帖子卡片
   Widget _buildTalentPostCard(TalentPost post) {
-    // 临时实现，后续会创建专门的TalentPostCard组件
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Icon(Icons.person, color: Colors.purple),
-                const SizedBox(width: 8.0),
-                Text(
-                  '人才: ${post.title}',
-                  style: const TextStyle(
-                    fontSize: 18.0,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8.0),
-            Text(post.introduction ?? ''),
-            const SizedBox(height: 8.0),
-            Wrap(
-              spacing: 8.0,
-              children: post.skills.map((skill) => Chip(
-                label: Text(skill),
-                backgroundColor: Colors.purple.withOpacity(0.1),
-              )).toList(),
-            ),
-          ],
-        ),
-      ),
+    return TalentPostCard(
+      talentPost: post,
+      onTap: () {
+        // TODO: 导航到人才详情页面
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('人才详情页面将在后续实现')),
+        );
+      },
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    // 计算宽度收缩比例
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double contentWidth = screenWidth * 0.94; // 向内收缩4%
+    
     return Scaffold(
+      backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: Container(
           height: 40,
@@ -222,30 +178,35 @@ class _HomePageState extends State<HomePage> {
               ? const Center(child: Text('暂无内容'))
               : RefreshIndicator(
                   onRefresh: _onRefresh,
-                  child: ListView.builder(
-                    controller: _scrollController,
-                    itemCount: _feedItems.length + (_isLoading && _canLoadMore ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _feedItems.length) {
-                        // 显示底部加载指示器
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      }
-                      
-                      final item = _feedItems[index];
-                      if (item is ProjectPost) {
-                        return _buildProjectPostCard(item);
-                      } else if (item is TalentPost) {
-                        return _buildTalentPostCard(item);
-                      }
-                      
-                      // 未知类型，返回空容器
-                      return Container();
-                    },
+                  child: Center(
+                    child: SizedBox(
+                      width: contentWidth,
+                      child: ListView.builder(
+                        controller: _scrollController,
+                        itemCount: _feedItems.length + (_isLoading && _canLoadMore ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _feedItems.length) {
+                            // 显示底部加载指示器
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(16.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          }
+                          
+                          final item = _feedItems[index];
+                          if (item is ProjectPost) {
+                            return _buildProjectPostCard(item);
+                          } else if (item is TalentPost) {
+                            return _buildTalentPostCard(item);
+                          }
+                          
+                          // 未知类型，返回空容器
+                          return Container();
+                        },
+                      ),
+                    ),
                   ),
                 ),
     );
