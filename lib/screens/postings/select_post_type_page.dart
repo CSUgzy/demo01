@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'create_project_post_page.dart';
+import 'create_talent_post_page.dart';
 
-class SelectPostTypePage extends StatelessWidget {
+class SelectPostTypePage extends StatefulWidget {
   const SelectPostTypePage({super.key});
 
+  @override
+  State<SelectPostTypePage> createState() => _SelectPostTypePageState();
+}
+
+class _SelectPostTypePageState extends State<SelectPostTypePage> {
   // 构建标签组件
   Widget _buildChip(String label, Color bgColor) {
     return Container(
@@ -30,19 +36,22 @@ class SelectPostTypePage extends StatelessWidget {
     required IconData icon,
     required List<String> tags,
     required List<Color> gradientColors,
-    required VoidCallback onTap,
+    required Widget destinationPage,
+    required String heroTag,
   }) {
-    return Card(
-      elevation: 0,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => destinationPage),
+          );
+        },
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(24),
+        splashColor: Colors.white.withOpacity(0.2),
+        highlightColor: Colors.white.withOpacity(0.3),
+        child: Ink(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: gradientColors,
@@ -50,52 +59,62 @@ class SelectPostTypePage extends StatelessWidget {
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 标题行
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(icon, color: Colors.white, size: 28),
-                ],
-              ),
-              const SizedBox(height: 16),
-              // 描述文本
-              Text(
-                description,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 20),
-              // 底部标签和箭头
-              Row(
-                children: [
-                  ...tags.map((tag) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: _buildChip(tag, Colors.white.withOpacity(0.2)),
-                  )),
-                  const Spacer(),
-                  const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white,
-                    size: 16,
-                  ),
-                ],
+            boxShadow: [
+              BoxShadow(
+                color: gradientColors[0].withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
             ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 标题行
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Icon(icon, color: Colors.white, size: 28),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                // 描述文本
+                Text(
+                  description,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                // 底部标签和箭头
+                Row(
+                  children: [
+                    ...tags.map((tag) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _buildChip(tag, Colors.white.withOpacity(0.2)),
+                    )),
+                    const Spacer(),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -148,12 +167,8 @@ class SelectPostTypePage extends StatelessWidget {
                 icon: Icons.group,
                 tags: ['找人才', '项目合作'],
                 gradientColors: projectCardGradient,
-                onTap: () {
-                  // 导航到项目发布页面
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (context) => const CreateProjectPostPage(),
-                  ));
-                },
+                destinationPage: const CreateProjectPostPage(),
+                heroTag: 'post_card_project',
               ),
               const SizedBox(height: 20),
               // 人才发布卡片
@@ -163,12 +178,8 @@ class SelectPostTypePage extends StatelessWidget {
                 icon: Icons.person,
                 tags: ['找项目', '求合作'],
                 gradientColors: talentCardGradient,
-                onTap: () {
-                  // TODO: 导航到人才发布页面
-                  // Navigator.push(context, MaterialPageRoute(
-                  //   builder: (context) => const CreateTalentPostPage(),
-                  // ));
-                },
+                destinationPage: const CreateTalentPostPage(),
+                heroTag: 'post_card_talent',
               ),
               const SizedBox(height: 40),
               // 底部提示文本

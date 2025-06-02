@@ -128,13 +128,23 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
       try {
         // 准备人才需求数据
         final List<Map<String, dynamic>> talentNeedsData = _talentRequirements.map((req) {
+          // 确保skills是List<String>而不是其他类型
+          final List<String> skills = req.selectedSkills.map((s) => s.toString()).toList();
+          
+          // 确保count是整数
+          final int count = int.parse(req.countController.text);
+          
           return {
             'role': req.roleController.text,
-            'skills': req.selectedSkills,
-            'count': int.parse(req.countController.text),
+            'skills': skills,
+            'count': count,
             'cooperationType': req.selectedCooperationType,
           };
         }).toList();
+        
+        // 调试信息
+        print('准备提交的人才需求数据:');
+        print(talentNeedsData);
 
         // 使用PostService发布项目需求
         final postService = PostService();
@@ -149,24 +159,53 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
           contactPhone: _phoneController.text.isEmpty ? null : _phoneController.text,
         );
 
-        if (result) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('项目需求发布成功')),
-          );
-          Navigator.of(context).pop();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('项目需求发布失败，请稍后重试')),
-          );
-        }
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('发生错误: $e')),
-        );
-      } finally {
+        // 设置加载状态为false
         setState(() {
           _isLoading = false;
         });
+
+        // 简化处理方式：直接导航返回，不显示SnackBar
+        if (result && mounted) {
+          // 成功发布，直接返回
+          Navigator.of(context).pop();
+        } else if (mounted) {
+          // 发布失败，显示对话框
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('提示'),
+              content: const Text('项目需求发布失败，请稍后重试'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+        }
+      } catch (e) {
+        // 设置加载状态为false
+        setState(() {
+          _isLoading = false;
+        });
+        
+        // 显示错误对话框
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('错误'),
+              content: Text('发生错误: $e'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('确定'),
+                ),
+              ],
+            ),
+          );
+        }
       }
     }
   }
@@ -180,237 +219,242 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
     // 计算内容宽度
     final contentWidth = screenWidth - (paddingValue * 2);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('发布项目需求'),
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          onPressed: () => Navigator.of(context).pop(),
+    return Hero(
+      tag: 'post_card_project',
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('发布项目需求'),
+          centerTitle: true,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
         ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-              key: _formKey,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(
-                  paddingValue, 
-                  16.0, 
-                  paddingValue, 
-                  16.0
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 项目名称
-                    _buildSectionTitle('项目名称/主题', true),
-                    SizedBox(
-                      width: contentWidth,
-                      child: TextFormField(
-                        controller: _projectNameController,
-                        decoration: InputDecoration(
-                          hintText: '请输入项目名称',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: const BorderSide(color: borderColor),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : Form(
+                key: _formKey,
+                child: SingleChildScrollView(
+                  padding: EdgeInsets.fromLTRB(
+                    paddingValue, 
+                    16.0, 
+                    paddingValue, 
+                    16.0
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 项目名称
+                      _buildSectionTitle('项目名称/主题', true),
+                      SizedBox(
+                        width: contentWidth,
+                        child: TextFormField(
+                          controller: _projectNameController,
+                          decoration: InputDecoration(
+                            hintText: '请输入项目名称',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: BorderSide(color: Colors.blue.shade400),
+                            ),
+                            contentPadding: contentPadding,
+                            counterText: '${_projectNameController.text.length}/30',
+                            filled: true,
+                            fillColor: Colors.white,
                           ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: const BorderSide(color: borderColor),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: BorderSide(color: Colors.blue.shade400),
-                          ),
-                          contentPadding: contentPadding,
-                          counterText: '${_projectNameController.text.length}/30',
-                          filled: true,
-                          fillColor: Colors.white,
+                          maxLength: 30,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return '请输入项目名称';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {}); // 更新计数器
+                          },
                         ),
-                        maxLength: 30,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return '请输入项目名称';
-                          }
-                          return null;
+                      ),
+                      const SizedBox(height: 20),
+
+                      // 项目阶段
+                      _buildSectionTitle('项目阶段', true),
+                      CustomDropdownSelect<String>(
+                        hint: '请选择当前项目所处阶段',
+                        items: projectStatusOptions,
+                        selectedItems: _selectedProjectStatus != null ? [_selectedProjectStatus!] : [],
+                        onItemSelected: (value) {
+                          setState(() {
+                            _selectedProjectStatus = value;
+                          });
                         },
-                        onChanged: (value) {
-                          setState(() {}); // 更新计数器
+                        onItemRemoved: (_) {
+                          setState(() {
+                            _selectedProjectStatus = null;
+                          });
                         },
+                        labelBuilder: (status) => status,
+                        width: contentWidth,
                       ),
-                    ),
-                    const SizedBox(height: 20),
+                      if (_selectedProjectStatus == null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0, left: 12.0),
+                          child: Text(
+                            '请选择项目阶段',
+                            style: TextStyle(
+                              color: Colors.red.shade700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 20),
 
-                    // 项目阶段
-                    _buildSectionTitle('项目阶段', true),
-                    CustomDropdownSelect<String>(
-                      hint: '请选择当前项目所处阶段',
-                      items: projectStatusOptions,
-                      selectedItems: _selectedProjectStatus != null ? [_selectedProjectStatus!] : [],
-                      onItemSelected: (value) {
-                        setState(() {
-                          _selectedProjectStatus = value;
-                        });
-                      },
-                      onItemRemoved: (_) {
-                        setState(() {
-                          _selectedProjectStatus = null;
-                        });
-                      },
-                      labelBuilder: (status) => status,
-                      width: contentWidth,
-                    ),
-                    if (_selectedProjectStatus == null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0, left: 12.0),
-                        child: Text(
-                          '请选择项目阶段',
-                          style: TextStyle(
-                            color: Colors.red.shade700,
-                            fontSize: 12,
+                      // 项目标签/领域
+                      _buildSectionTitle('项目标签/领域', true),
+                      CustomDropdownSelect<String>(
+                        hint: '请添加项目所属领域标签，最多5个',
+                        items: predefinedDomains.where((domain) => !_selectedDomains.contains(domain)).toList(),
+                        selectedItems: _selectedDomains,
+                        onItemSelected: _addDomain,
+                        onItemRemoved: _removeDomain,
+                        labelBuilder: (domain) => domain,
+                        isMultiSelect: true,
+                        width: contentWidth,
+                      ),
+                      const SizedBox(height: 20),
+
+                      // 项目简介
+                      _buildSectionTitle('项目简介', true),
+                      SizedBox(
+                        width: contentWidth,
+                        child: TextFormField(
+                          controller: _projectIntroController,
+                          decoration: InputDecoration(
+                            hintText: '请详细描述您的项目，包括背景、愿景、目前进展等',
+                            hintStyle: TextStyle(color: Colors.grey.shade400),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: const BorderSide(color: borderColor),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                              borderSide: BorderSide(color: Colors.blue.shade400),
+                            ),
+                            contentPadding: contentPadding,
+                            alignLabelWithHint: true,
+                            counterText: '${_projectIntroController.text.length}/1000',
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          maxLength: 1000,
+                          maxLines: 8,
+                          validator: (value) {
+                            if (value == null || value.trim().isEmpty) {
+                              return '请输入项目简介';
+                            }
+                            return null;
+                          },
+                          onChanged: (value) {
+                            setState(() {}); // 更新计数器
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // 人才需求
+                      _buildSectionTitle('人才需求', true),
+                      const Text('请添加项目所需的人才需求'),
+                      const SizedBox(height: 8),
+                      ..._buildTalentRequirements(contentWidth),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: contentWidth,
+                        child: ElevatedButton.icon(
+                          onPressed: _addTalentRequirement,
+                          icon: const Icon(Icons.add),
+                          label: const Text('添加需求'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.grey[100],
+                            foregroundColor: Colors.black87,
                           ),
                         ),
                       ),
-                    const SizedBox(height: 20),
+                      const SizedBox(height: 20),
 
-                    // 项目标签/领域
-                    _buildSectionTitle('项目标签/领域', true),
-                    CustomDropdownSelect<String>(
-                      hint: '请添加项目所属领域标签，最多5个',
-                      items: predefinedDomains.where((domain) => !_selectedDomains.contains(domain)).toList(),
-                      selectedItems: _selectedDomains,
-                      onItemSelected: _addDomain,
-                      onItemRemoved: _removeDomain,
-                      labelBuilder: (domain) => domain,
-                      isMultiSelect: true,
-                      width: contentWidth,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 项目简介
-                    _buildSectionTitle('项目简介', true),
-                    SizedBox(
-                      width: contentWidth,
-                      child: TextFormField(
-                        controller: _projectIntroController,
-                        decoration: InputDecoration(
-                          hintText: '请详细描述您的项目，包括背景、愿景、目前进展等',
-                          hintStyle: TextStyle(color: Colors.grey.shade400),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: const BorderSide(color: borderColor),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: const BorderSide(color: borderColor),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                            borderSide: BorderSide(color: Colors.blue.shade400),
-                          ),
-                          contentPadding: contentPadding,
-                          alignLabelWithHint: true,
-                          counterText: '${_projectIntroController.text.length}/1000',
-                          filled: true,
-                          fillColor: Colors.white,
-                        ),
-                        maxLength: 1000,
-                        maxLines: 8,
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return '请输入项目简介';
-                          }
-                          return null;
-                        },
-                        onChanged: (value) {
-                          setState(() {}); // 更新计数器
-                        },
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 人才需求
-                    _buildSectionTitle('人才需求', true),
-                    const Text('请添加项目所需的人才需求'),
-                    const SizedBox(height: 8),
-                    ..._buildTalentRequirements(contentWidth),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: contentWidth,
-                      child: ElevatedButton.icon(
-                        onPressed: _addTalentRequirement,
-                        icon: const Icon(Icons.add),
-                        label: const Text('添加需求'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey[100],
-                          foregroundColor: Colors.black87,
+                      // 联系方式
+                      _buildSectionTitle('联系方式', false),
+                      const Text('选填，公开后他人可见'),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: contentWidth,
+                        child: _buildContactField(
+                          controller: _wechatController,
+                          label: '微信号',
+                          hintText: '请填写您的微信号',
+                          icon: Icons.wechat,
+                          iconColor: wechatGreen,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    // 联系方式
-                    _buildSectionTitle('联系方式', false),
-                    const Text('选填，公开后他人可见'),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: contentWidth,
-                      child: _buildContactField(
-                        controller: _wechatController,
-                        label: '微信号',
-                        hintText: '请填写您的微信号',
-                        icon: Icons.wechat,
-                        iconColor: wechatGreen,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: contentWidth,
-                      child: _buildContactField(
-                        controller: _emailController,
-                        label: '邮箱',
-                        hintText: '请填写您的邮箱',
-                        icon: Icons.mail_outline,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: contentWidth,
-                      child: _buildContactField(
-                        controller: _phoneController,
-                        label: '手机号',
-                        hintText: '请填写您的手机号',
-                        icon: Icons.phone,
-                        iconColor: themeBlue,
-                        keyboardType: TextInputType.phone,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-
-                    // 发布按钮
-                    SizedBox(
-                      width: contentWidth,
-                      height: 48,
-                      child: ElevatedButton(
-                        onPressed: _submitForm,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF3B82F6),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(borderRadius),
-                          ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: contentWidth,
+                        child: _buildContactField(
+                          controller: _emailController,
+                          label: '邮箱',
+                          hintText: '请填写您的邮箱',
+                          icon: Icons.mail_outline,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: _validateEmail,
                         ),
-                        child: const Text('发布', style: TextStyle(fontSize: 16)),
                       ),
-                    ),
-                    const SizedBox(height: 20),
-                  ],
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: contentWidth,
+                        child: _buildContactField(
+                          controller: _phoneController,
+                          label: '手机号',
+                          hintText: '请填写您的手机号',
+                          icon: Icons.phone,
+                          iconColor: themeBlue,
+                          keyboardType: TextInputType.phone,
+                          validator: _validatePhone,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+
+                      // 发布按钮
+                      SizedBox(
+                        width: contentWidth,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: _submitForm,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF3B82F6),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(borderRadius),
+                            ),
+                          ),
+                          child: const Text('发布', style: TextStyle(fontSize: 16)),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
@@ -448,6 +492,7 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
     required IconData icon,
     Color? iconColor,
     TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -472,7 +517,36 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
         fillColor: Colors.white,
       ),
       keyboardType: keyboardType,
+      validator: validator,
     );
+  }
+
+  // 邮箱格式验证
+  String? _validateEmail(String? value) {
+    if (value == null || value.isEmpty) {
+      return null; // 邮箱是选填的
+    }
+    
+    // 使用正则表达式验证邮箱格式
+    final emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegex.hasMatch(value)) {
+      return '请输入有效的邮箱地址';
+    }
+    return null;
+  }
+  
+  // 手机号格式验证
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return null; // 手机号是选填的
+    }
+    
+    // 验证中国大陆手机号格式（11位数字，以1开头）
+    final phoneRegex = RegExp(r'^1[3-9]\d{9}$');
+    if (!phoneRegex.hasMatch(value)) {
+      return '请输入有效的手机号码';
+    }
+    return null;
   }
 
   // 构建人才需求列表

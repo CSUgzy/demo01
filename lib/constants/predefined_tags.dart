@@ -8,6 +8,7 @@ const List<String> predefinedSkills = [
   '技术架构设计',
   '产品管理与策划',
   '产品运营',
+  '其他',
 ];
 
 /// 预定义的领域标签

@@ -90,7 +90,13 @@ class _CustomDropdownSelectState<T> extends State<CustomDropdownSelect<T>> with 
     _searchController.dispose();
     _focusNode.dispose();
     _animationController.dispose();
-    _closeDropdown();
+    
+    // 安全地关闭下拉菜单
+    if (_overlayEntry != null) {
+      _overlayEntry!.remove();
+      _overlayEntry = null;
+    }
+    
     super.dispose();
   }
 
@@ -113,7 +119,11 @@ class _CustomDropdownSelectState<T> extends State<CustomDropdownSelect<T>> with 
       });
     }
     _isOpen = false;
-    _searchController.clear();
+    
+    // 安全地清除搜索文本
+    if (_searchController.hasListeners) {
+      _searchController.clear();
+    }
   }
 
   void _toggleDropdown() {
