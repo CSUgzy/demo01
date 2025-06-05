@@ -26,6 +26,7 @@ class _HomePageState extends State<HomePage> {
   
   // 筛选相关状态
   String? _selectedDomain;
+  String? _selectedMainIntent; // 可为 'Talent', 'Project', 或 null 表示"全部"
 
   @override
   void initState() {
@@ -110,45 +111,73 @@ class _HomePageState extends State<HomePage> {
 
   // 应用筛选条件
   void _applyFilters() {
-    if (_selectedDomain == null) {
-      // 如果没有选中任何领域，显示所有内容
-      _displayedFeedItems = List.from(_allFeedItems);
-      return;
+    // 首先获取所有内容的副本
+    List<dynamic> filteredItems = List.from(_allFeedItems);
+    
+    // 应用主要意图筛选
+    if (_selectedMainIntent != null) {
+      filteredItems = filteredItems.where((item) {
+        if (_selectedMainIntent == 'Project') {
+          return item is ProjectPost;
+        } else if (_selectedMainIntent == 'Talent') {
+          return item is TalentPost;
+        }
+        return true; // 如果是null或其他值，不筛选
+      }).toList();
     }
     
-    // 根据选中的领域筛选内容
-    _displayedFeedItems = _allFeedItems.where((item) {
-      if (item is ProjectPost) {
-        // 检查项目标签中是否包含所选领域
-        return item.projectTags.contains(_selectedDomain);
-      } else if (item is TalentPost) {
-        // 检查人才期望领域中是否包含所选领域
-        if (item.expectedDomains.isNotEmpty) {
-          return item.expectedDomains.contains(_selectedDomain);
-        } else {
-          // 如果expectedDomains为空，尝试从其他字段匹配，例如从coreSkillsTags或标题中
-          // 这里是一个备选方案，如果数据不完整
-          final String domainLower = _selectedDomain!.toLowerCase();
-          
-          // 检查标题中是否包含领域关键词
-          if (item.title.toLowerCase().contains(domainLower)) {
-            return true;
-          }
-          
-          // 检查核心技能中是否有与领域相关的技能
-          for (final skill in item.coreSkillsTags) {
-            if (skill.toLowerCase().contains(domainLower)) {
+    // 应用领域筛选
+    if (_selectedDomain != null) {
+      filteredItems = filteredItems.where((item) {
+        if (item is ProjectPost) {
+          // 检查项目标签中是否包含所选领域
+          return item.projectTags.contains(_selectedDomain);
+        } else if (item is TalentPost) {
+          // 检查人才期望领域中是否包含所选领域
+          if (item.expectedDomains.isNotEmpty) {
+            return item.expectedDomains.contains(_selectedDomain);
+          } else {
+            // 如果expectedDomains为空，尝试从其他字段匹配，例如从coreSkillsTags或标题中
+            // 这里是一个备选方案，如果数据不完整
+            final String domainLower = _selectedDomain!.toLowerCase();
+            
+            // 检查标题中是否包含领域关键词
+            if (item.title.toLowerCase().contains(domainLower)) {
               return true;
             }
+            
+            // 检查核心技能中是否有与领域相关的技能
+            for (final skill in item.coreSkillsTags) {
+              if (skill.toLowerCase().contains(domainLower)) {
+                return true;
+              }
+            }
           }
+          return false;
         }
         return false;
-      }
-      return false;
-    }).toList();
+      }).toList();
+    }
+    
+    _displayedFeedItems = filteredItems;
     
     // 打印筛选结果
-    print('已筛选 ${_displayedFeedItems.length} 个内容，领域: $_selectedDomain');
+    print('已筛选 ${_displayedFeedItems.length} 个内容，领域: $_selectedDomain，主要意图: $_selectedMainIntent');
+  }
+
+  // 更新筛选条件
+  void _updateFilters({String? domain, String? mainIntent, bool apply = true}) {
+    setState(() {
+      if (domain != null) {
+        _selectedDomain = domain;
+      }
+      if (mainIntent != null) {
+        _selectedMainIntent = mainIntent;
+      }
+      if (apply) {
+        _applyFilters();
+      }
+    });
   }
 
   // 下拉刷新
@@ -205,66 +234,166 @@ class _HomePageState extends State<HomePage> {
 
   // 构建横向滚动的标签栏
   Widget _buildTagsBar() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          bottom: BorderSide(
-            color: Colors.grey.withOpacity(0.2),
-            width: 1,
-          ),
-        ),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Row(
-          children: [
-            // 全部标签
-            Padding(
-              padding: const EdgeInsets.only(right: 24.0),
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _selectedDomain = null;
-                    _applyFilters(); // 应用筛选
-                  });
-                },
-                child: Text(
-                  '全部',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: _selectedDomain == null ? FontWeight.bold : FontWeight.normal,
-                    color: _selectedDomain == null ? Colors.blue[700] : Colors.grey[600],
-                  ),
-                ),
+    return Stack(
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.grey.withOpacity(0.2),
+                width: 1,
               ),
             ),
-            // 领域标签
-            ...predefinedDomains.map((domain) {
-              return Padding(
-                padding: const EdgeInsets.only(right: 24.0),
-                child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _selectedDomain = _selectedDomain == domain ? null : domain;
-                      _applyFilters(); // 应用筛选
-                    });
-                  },
-                  child: Text(
-                    domain,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: _selectedDomain == domain ? FontWeight.bold : FontWeight.normal,
-                      color: _selectedDomain == domain ? Colors.blue[700] : Colors.grey[600],
+          ),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+            child: Row(
+              children: [
+                // 全部标签
+                Padding(
+                  padding: const EdgeInsets.only(right: 24.0),
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _selectedDomain = null;
+                        _applyFilters(); // 应用筛选
+                      });
+                    },
+                    child: Text(
+                      '全部',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: _selectedDomain == null ? FontWeight.bold : FontWeight.normal,
+                        color: _selectedDomain == null ? Colors.blue[700] : Colors.grey[600],
+                      ),
                     ),
                   ),
                 ),
-              );
-            }).toList(),
-          ],
+                // 领域标签
+                ...predefinedDomains.map((domain) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 24.0),
+                    child: InkWell(
+                      onTap: () {
+                        setState(() {
+                          _selectedDomain = _selectedDomain == domain ? null : domain;
+                          _applyFilters(); // 应用筛选
+                        });
+                      },
+                      child: Text(
+                        domain,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: _selectedDomain == domain ? FontWeight.bold : FontWeight.normal,
+                          color: _selectedDomain == domain ? Colors.blue[700] : Colors.grey[600],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ],
+            ),
+          ),
         ),
+        // 右侧筛选按钮（半透明背景）
+        Positioned(
+          right: 8,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withOpacity(0.8),
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.filter_list, size: 20),
+                padding: EdgeInsets.zero,
+                onPressed: () {
+                  _showFilterBottomSheet(context);
+                },
+                tooltip: '筛选',
+                constraints: const BoxConstraints(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 显示筛选底部面板
+  void _showFilterBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16.0)),
       ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Container(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      '筛选类型',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  RadioListTile<String?>(
+                    title: const Text('全部'),
+                    value: null,
+                    groupValue: _selectedMainIntent,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedMainIntent = value;
+                      });
+                      _updateFilters(mainIntent: value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  RadioListTile<String?>(
+                    title: const Text('只看项目'),
+                    value: 'Project',
+                    groupValue: _selectedMainIntent,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedMainIntent = value;
+                      });
+                      _updateFilters(mainIntent: value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  RadioListTile<String?>(
+                    title: const Text('只看人才'),
+                    value: 'Talent',
+                    groupValue: _selectedMainIntent,
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedMainIntent = value;
+                      });
+                      _updateFilters(mainIntent: value);
+                      Navigator.pop(context);
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

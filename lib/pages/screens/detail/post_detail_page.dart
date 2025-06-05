@@ -85,8 +85,21 @@ class _PostDetailPageState extends State<PostDetailPage> {
       );
 
       if (success && mounted) {
+        // 更新收藏状态
         setState(() {
           _isCollected = !_isCollected;
+          
+          // 更新收藏数量
+          if (_postData != null) {
+            int currentCount = _postData!['collectionCount'] as int? ?? 0;
+            if (_isCollected) {
+              // 收藏数+1
+              _postData!['collectionCount'] = currentCount + 1;
+            } else {
+              // 收藏数-1，但不小于0
+              _postData!['collectionCount'] = currentCount > 0 ? currentCount - 1 : 0;
+            }
+          }
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1198,6 +1211,14 @@ class _PostDetailPageState extends State<PostDetailPage> {
                       style: TextStyle(
                         color: _isCollected ? Colors.amber : Colors.grey,
                         fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      '(${_postData?['collectionCount'] ?? 0})',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
                       ),
                     ),
                   ],

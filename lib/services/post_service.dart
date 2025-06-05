@@ -38,6 +38,7 @@ class PostService {
       projectPost['projectIntro'] = projectIntro;
       projectPost['publisher'] = LCObject.createWithoutData('_User', currentUser.objectId!);
       projectPost['projectTags'] = projectTags;
+      projectPost['collectionCount'] = 0; // 初始化收藏计数为0
       
       if (projectDetails != null) {
         projectPost['projectDetails'] = projectDetails;
@@ -160,6 +161,7 @@ class PostService {
       talentPost['expectedDomains'] = expectedDomains;
       talentPost['expectedCity'] = expectedCity;
       talentPost['acceptsRemote'] = acceptsRemote;
+      talentPost['collectionCount'] = 0; // 初始化收藏计数为0
 
       print('设置可选字段...');
       if (expectedSalary != null && expectedSalary.isNotEmpty) talentPost['expectedSalary'] = expectedSalary;
@@ -201,6 +203,18 @@ class PostService {
     if (currentUser == null) return false;
 
     try {
+      // 获取帖子对象
+      String className = postType == 'Project' ? 'ProjectPost' : 'TalentPost';
+      LCObject post = LCObject.createWithoutData(className, postId);
+      
+      // 尝试获取完整的帖子数据，以便更新收藏计数
+      try {
+        await post.fetch();
+      } catch (e) {
+        print('获取帖子数据失败: $e');
+        // 即使获取失败，我们仍然继续处理收藏状态
+      }
+      
       if (currentCollectionState) { // 如果当前是已收藏，则取消收藏
         LCQuery<LCObject> query = LCQuery('Collection');
         query.whereEqualTo('user', currentUser);
@@ -217,6 +231,18 @@ class PostService {
         LCObject? collectionEntry = await query.first();
         if (collectionEntry != null) {
           await collectionEntry.delete();
+          
+          // 减少帖子的收藏计数
+          try {
+            int currentCount = post['collectionCount'] as int? ?? 0;
+            if (currentCount > 0) {
+              post['collectionCount'] = currentCount - 1;
+              await post.save();
+              print('帖子收藏计数减少到: ${currentCount - 1}');
+            }
+          } catch (e) {
+            print('更新帖子收藏计数失败: $e');
+          }
         }
       } else { // 如果当前未收藏，则添加收藏
         LCObject collectionEntry = LCObject('Collection');
@@ -228,6 +254,16 @@ class PostService {
             collectionEntry['collectedTalentPost'] = LCObject.createWithoutData('TalentPost', postId);
         }
         await collectionEntry.save();
+        
+        // 增加帖子的收藏计数
+        try {
+          int currentCount = post['collectionCount'] as int? ?? 0;
+          post['collectionCount'] = currentCount + 1;
+          await post.save();
+          print('帖子收藏计数增加到: ${currentCount + 1}');
+        } catch (e) {
+          print('更新帖子收藏计数失败: $e');
+        }
       }
       return true;
     } catch (e) {
@@ -253,5 +289,104 @@ class PostService {
     query.limit(1);
     int? count = await query.count();
     return (count ?? 0) > 0;
+  }
+
+  // 获取当前用户发布的项目帖子
+  Future<List<LCObject>> fetchCurrentUserProjectPosts({bool refresh = false}) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return [];
+
+    try {
+      LCQuery<LCObject> query = LCQuery('ProjectPost');
+      query.whereEqualTo('publisher', currentUser); // 核心筛选条件
+      query.include('publisher'); // 虽然是自己，但保持数据结构一致性
+      query.orderByDescending('createdAt');
+      // 为简化，先不实现分页，一次性获取所有，如果帖子多，后续再加入分页
+      return await query.find() ?? [];
+    } catch (e) {
+      print('Error fetching current user project posts: $e');
+      return [];
+    }
+  }
+
+  // 获取当前用户发布的人才帖子
+  Future<List<LCObject>> fetchCurrentUserTalentPosts({bool refresh = false}) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return [];
+
+    try {
+      LCQuery<LCObject> query = LCQuery('TalentPost');
+      query.whereEqualTo('publisher', currentUser);
+      query.include('publisher');
+      query.orderByDescending('createdAt');
+      return await query.find() ?? [];
+    } catch (e) {
+      print('Error fetching current user talent posts: $e');
+      return [];
+    }
+  }
+
+  // 删除帖子的方法 (通用)
+  Future<bool> deletePost(String postId, String className) async {
+    try {
+      LCObject post = LCObject.createWithoutData(className, postId);
+      await post.delete();
+      return true;
+    } catch (e) {
+      print('Error deleting post $postId from $className: $e');
+      return false;
+    }
+  }
+
+  // 获取当前用户收藏列表
+  Future<List<dynamic>> fetchCurrentUserCollections({bool refresh = false}) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return [];
+
+    try {
+      LCQuery<LCObject> query = LCQuery('Collection');
+      query.whereEqualTo('user', currentUser); // 筛选当前用户的收藏记录
+      query.orderByDescending('createdAt'); // 按收藏时间倒序
+
+      // 为了在卡片上显示发布者信息，我们需要include嵌套的publisher
+      query.include('collectedProjectPost');
+      query.include('collectedProjectPost.publisher'); // 深入包含项目发布者
+      query.include('collectedTalentPost');
+      query.include('collectedTalentPost.publisher');  // 深入包含人才发布者
+
+      List<LCObject>? collectionEntries = await query.find();
+
+      if (collectionEntries == null || collectionEntries.isEmpty) {
+        return [];
+      }
+
+      List<dynamic> collectedPosts = [];
+      for (var entry in collectionEntries) {
+        LCObject? post;
+        if (entry['postType'] == 'Project' && entry['collectedProjectPost'] != null) {
+          post = entry['collectedProjectPost'] as LCObject;
+        } else if (entry['postType'] == 'Talent' && entry['collectedTalentPost'] != null) {
+          post = entry['collectedTalentPost'] as LCObject;
+        }
+
+        if (post != null) {
+          // 将LCObject转换为你的Flutter数据模型 (ProjectPost/TalentPost)
+          // 例如:
+          if (post.className == 'ProjectPost') {
+            // collectedPosts.add(ProjectPost.fromLCObject(post)); // 假设你有 ProjectPost.fromLCObject
+          } else if (post.className == 'TalentPost') {
+            // collectedPosts.add(TalentPost.fromLCObject(post)); // 假设你有 TalentPost.fromLCObject
+          }
+          // 为简化，先直接返回LCObject，在UI层判断和转换，或确保模型转换已实现
+          collectedPosts.add({'originalCollectionEntry': entry, 'postObject': post});
+        }
+      }
+
+      return collectedPosts;
+
+    } catch (e) {
+      print('Error fetching current user collections: $e');
+      return [];
+    }
   }
 } 
