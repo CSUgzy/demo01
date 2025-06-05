@@ -3,7 +3,8 @@ import '../models/project_post_model.dart';
 import '../models/talent_post_model.dart';
 
 class FeedService {
-  int _pageSkip = 0;
+  int _projectPageSkip = 0;
+  int _talentPageSkip = 0;
   final int _pageSize = 10; // 每页加载数量
   bool _useTestData = false; // 改为false，使用真实数据而非测试数据
 
@@ -13,7 +14,7 @@ class FeedService {
 
   Future<List<LCObject>> fetchProjectPosts({bool refresh = false}) async {
     if (refresh) {
-      _pageSkip = 0;
+      _projectPageSkip = 0;
     }
     
     // 使用测试数据
@@ -25,11 +26,11 @@ class FeedService {
       LCQuery<LCObject> query = LCQuery('ProjectPost');
       query.include('publisher'); // 包含发布者信息
       query.orderByDescending('createdAt');
-      query.skip(_pageSkip);
+      query.skip(_projectPageSkip);
       query.limit(_pageSize);
       List<LCObject>? posts = await query.find();
       if (posts != null && posts.isNotEmpty) {
-        _pageSkip += posts.length;
+        _projectPageSkip += posts.length;
       }
       return posts ?? [];
     } catch (e) {
@@ -93,7 +94,7 @@ class FeedService {
 
   Future<List<LCObject>> fetchTalentPosts({bool refresh = false}) async {
     if (refresh) {
-      _pageSkip = 0;
+      _talentPageSkip = 0;
     }
     
     // 使用测试数据
@@ -105,11 +106,11 @@ class FeedService {
       LCQuery<LCObject> query = LCQuery('TalentPost');
       query.include('publisher'); // 包含发布者信息
       query.orderByDescending('createdAt');
-      query.skip(_pageSkip);
+      query.skip(_talentPageSkip);
       query.limit(_pageSize);
       List<LCObject>? posts = await query.find();
       if (posts != null && posts.isNotEmpty) {
-        _pageSkip += posts.length;
+        _talentPageSkip += posts.length;
       }
       return posts ?? [];
     } catch (e) {
@@ -194,7 +195,20 @@ class FeedService {
         return bTime.compareTo(aTime); // 降序排序，最新的在前面
       });
       
-      return mixedFeed;
+      // 去重逻辑
+      final Set<String> objectIds = {};
+      final List<dynamic> uniqueFeed = [];
+
+      for (var item in mixedFeed) {
+        final String? objectId = item.objectId;
+        if (objectId != null && !objectIds.contains(objectId)) {
+          objectIds.add(objectId);
+          uniqueFeed.add(item);
+        }
+      }
+
+      // 返回去重后的列表
+      return uniqueFeed;
     } catch (e) {
       print('Error fetching mixed feed: $e');
       return [];
@@ -202,6 +216,7 @@ class FeedService {
   }
 
   void resetPage() {
-    _pageSkip = 0;
+    _projectPageSkip = 0;
+    _talentPageSkip = 0;
   }
 } 

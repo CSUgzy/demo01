@@ -12,7 +12,7 @@ class AppUser { // 避免与LCUser冲突
     return AppUser(
       objectId: lcUser.objectId!,
       nickname: lcUser['nickname'] as String?,
-      avatarUrl: (lcUser['avatar'] as LCFile?)?.url,
+      avatarUrl: (lcUser['icon'] as LCFile?)?.url,
       profileSystemTags: List<String>.from(lcUser['profileSystemTags'] as List? ?? []),
     );
   }

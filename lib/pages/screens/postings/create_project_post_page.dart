@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:city_pickers/city_pickers.dart';
 import '../../../constants/predefined_tags.dart';
 import '../../../constants/cooperation_options.dart';
 import '../../../services/post_service.dart';
@@ -94,6 +95,36 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
     });
   }
 
+  // 添加城市选择方法
+  Future<void> _showCityPicker(TalentRequirement requirement) async {
+    try {
+      final result = await CityPickers.showCityPicker(
+        context: context,
+        height: 300,
+        cancelWidget: Text(
+          '取消',
+          style: TextStyle(color: Colors.grey[600]),
+        ),
+        confirmWidget: Text(
+          '确定',
+          style: TextStyle(color: themeBlue),
+        ),
+      );
+      
+      if (result != null) {
+        setState(() {
+          requirement.workLocationController.text = '${result.provinceName} ${result.cityName}';
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('选择城市失败: $e')),
+        );
+      }
+    }
+  }
+
   // 提交表单
   Future<void> _submitForm() async {
     if (_formKey.currentState?.validate() ?? false) {
@@ -139,6 +170,7 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
             'skills': skills,
             'count': count,
             'cooperationType': req.selectedCooperationType,
+            'workLocation': req.workLocationController.text.isNotEmpty ? req.workLocationController.text : null,
           };
         }).toList();
         
@@ -724,6 +756,37 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
                 ),
               ],
             ),
+            
+            const SizedBox(height: 12),
+            
+            // 工作地点
+            const Text('工作地点'),
+            const SizedBox(height: 4),
+            TextFormField(
+              controller: requirement.workLocationController,
+              readOnly: true,
+              onTap: () => _showCityPicker(requirement),
+              decoration: InputDecoration(
+                hintText: '点击选择城市',
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: const BorderSide(color: borderColor),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: const BorderSide(color: borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  borderSide: BorderSide(color: Colors.blue.shade400),
+                ),
+                contentPadding: contentPadding,
+                suffixIcon: const Icon(Icons.location_city),
+                filled: true,
+                fillColor: Colors.white,
+              ),
+            ),
           ],
         ),
       );
@@ -735,6 +798,7 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
 class TalentRequirement {
   final TextEditingController roleController = TextEditingController();
   final TextEditingController countController = TextEditingController();
+  final TextEditingController workLocationController = TextEditingController();
   String? selectedCooperationType;
   final List<String> selectedSkills = [];
 
@@ -750,5 +814,6 @@ class TalentRequirement {
   void dispose() {
     roleController.dispose();
     countController.dispose();
+    workLocationController.dispose();
   }
 } 

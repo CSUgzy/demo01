@@ -14,6 +14,7 @@ class TalentPost {
   final String? educationBackground; // 教育背景
   final String? contactInfo; // 联系方式
   final String? portfolioUrl; // 作品集链接
+  final List<String> expectedDomains; // 期望的工作领域
 
   TalentPost({
     this.objectId,
@@ -28,6 +29,7 @@ class TalentPost {
     this.educationBackground,
     this.contactInfo,
     this.portfolioUrl,
+    this.expectedDomains = const [], // 默认为空列表
   });
 
   factory TalentPost.fromLCObject(LCObject object) {
@@ -85,6 +87,60 @@ class TalentPost {
       }
     }
 
+    // 处理expectedDomains字段
+    List<String> parsedDomains = [];
+    
+    // 首先尝试解析expectedDomainsJson字段
+    final String? domainsJson = object['expectedDomainsJson'] as String?;
+    if (domainsJson != null && domainsJson.isNotEmpty) {
+      try {
+        final List<dynamic> decodedList = json.decode(domainsJson);
+        for (var item in decodedList) {
+          if (item is String) {
+            parsedDomains.add(item);
+          }
+        }
+      } catch (e) {
+        print('Error parsing expectedDomainsJson: $e');
+      }
+    }
+    
+    // 如果expectedDomainsJson解析失败，尝试使用expectedDomains字段
+    if (parsedDomains.isEmpty) {
+      final rawDomains = object['expectedDomains'];
+      if (rawDomains != null) {
+        if (rawDomains is List) {
+          for (var domain in rawDomains) {
+            if (domain is String) {
+              parsedDomains.add(domain);
+            } else if (domain != null) {
+              parsedDomains.add(domain.toString());
+            }
+          }
+        } else if (rawDomains is String) {
+          parsedDomains.add(rawDomains);
+        }
+      }
+    }
+    
+    // 如果expectedDomains字段也没有，尝试从domainTags获取
+    if (parsedDomains.isEmpty) {
+      final domainTags = object['domainTags'];
+      if (domainTags != null) {
+        if (domainTags is List) {
+          for (var domain in domainTags) {
+            if (domain is String) {
+              parsedDomains.add(domain);
+            } else if (domain != null) {
+              parsedDomains.add(domain.toString());
+            }
+          }
+        } else if (domainTags is String) {
+          parsedDomains.add(domainTags);
+        }
+      }
+    }
+
     // 处理publishedAt字段
     DateTime? publishedAt;
     final rawPublishedAt = object['publishedAt'];
@@ -113,6 +169,7 @@ class TalentPost {
       educationBackground: object['educationBackground'] as String?,
       contactInfo: object['contactInfo'] as String?,
       portfolioUrl: object['portfolioUrl'] as String?,
+      expectedDomains: parsedDomains,
     );
   }
 } 

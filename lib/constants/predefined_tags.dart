@@ -13,14 +13,15 @@ const List<String> predefinedSkills = [
 
 /// 预定义的领域标签
 const List<String> predefinedDomains = [
-  '社交与内容平台',
-  '电子商务与零售',
+  '互联网',
+  '教育',
+  '医疗',
+  '金融',
+  '消费服务',
   '企业服务',
-  '金融科技',
-  '在线教育',
-  '医疗健康科技',
-  '人工智能与大数据应用',
-  '出海与全球化业务',
+  '科技创新',
+  '工业制造',
+  '其他',
 ]; 
 
 const List<String> projectStatusOptions = [

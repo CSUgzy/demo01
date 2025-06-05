@@ -3,6 +3,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import 'package:leancloud_storage/leancloud.dart';
 import '../../models/project_post_model.dart';
 import '../../models/user_model.dart';
+import '../../pages/screens/detail/post_detail_page.dart';
 
 class ProjectPostCard extends StatelessWidget {
   final ProjectPost projectPost;
@@ -124,7 +125,18 @@ class ProjectPostCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16.0),
         ),
         child: InkWell(
-          onTap: onTap,
+          onTap: onTap ?? () {
+            // 如果没有提供外部的 onTap 回调，使用默认导航
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDetailPage(
+                  postId: projectPost.objectId!,
+                  postType: 'Project',
+                ),
+              ),
+            );
+          },
           borderRadius: BorderRadius.circular(16.0),
           child: Padding(
             padding: const EdgeInsets.all(20.0),
@@ -252,13 +264,13 @@ class ProjectPostCard extends StatelessWidget {
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                           decoration: BoxDecoration(
-                            color: Colors.grey[200],
+                            color: Colors.green[50],
                             borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
                             '$role$countText',
                             style: TextStyle(
-                              color: Colors.grey[800],
+                              color: Colors.green[700],
                               fontSize: 13,
                             ),
                           ),

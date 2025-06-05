@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:leancloud_storage/leancloud.dart';
 import '../../models/talent_post_model.dart';
+import '../../pages/screens/detail/post_detail_page.dart';
 
 class TalentPostCard extends StatelessWidget {
   final TalentPost talentPost;
@@ -123,7 +124,18 @@ class TalentPostCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(16.0),
         ),
         child: InkWell(
-          onTap: onTap,
+          onTap: onTap ?? () {
+            // 如果没有提供外部的 onTap 回调，使用默认导航
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PostDetailPage(
+                  postId: talentPost.objectId!,
+                  postType: 'Talent',
+                ),
+              ),
+            );
+          },
           borderRadius: BorderRadius.circular(16.0),
           child: Padding(
             padding: const EdgeInsets.all(20.0),

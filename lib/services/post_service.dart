@@ -68,6 +68,7 @@ class PostService {
             'skills': need['skills'],
             'count': need['count'] is int ? need['count'] : int.parse(need['count'].toString()),
             'cooperationType': need['cooperationType'].toString(),
+            'workLocation': need['workLocation'],
           };
         }
         
@@ -179,5 +180,78 @@ class PostService {
       }
       return false;
     }
+  }
+
+  // 获取单个帖子详情
+  Future<LCObject?> fetchPostDetails(String postId, String className) async {
+    try {
+      LCQuery<LCObject> query = LCQuery(className); // className 会是 'ProjectPost' 或 'TalentPost'
+      query.include('publisher'); // 非常重要，获取发布者完整信息
+      // 如果有其他 Pointer 类型的字段需要完整信息，也在这里 include
+      return await query.get(postId);
+    } catch (e) {
+      print('Error fetching post details for $postId in $className: $e');
+      return null;
+    }
+  }
+
+  // 收藏/取消收藏帖子的方法
+  Future<bool> toggleCollectionStatus(String postId, String postType, bool currentCollectionState) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return false;
+
+    try {
+      if (currentCollectionState) { // 如果当前是已收藏，则取消收藏
+        LCQuery<LCObject> query = LCQuery('Collection');
+        query.whereEqualTo('user', currentUser);
+        query.whereEqualTo('postType', postType);
+        // 根据 Module 2 中 Collection 表的设计，我们用两个Pointer字段
+        if (postType == 'Project') {
+            LCObject projectPointer = LCObject.createWithoutData('ProjectPost', postId);
+            query.whereEqualTo('collectedProjectPost', projectPointer);
+        } else if (postType == 'Talent') {
+            LCObject talentPointer = LCObject.createWithoutData('TalentPost', postId);
+            query.whereEqualTo('collectedTalentPost', talentPointer);
+        }
+
+        LCObject? collectionEntry = await query.first();
+        if (collectionEntry != null) {
+          await collectionEntry.delete();
+        }
+      } else { // 如果当前未收藏，则添加收藏
+        LCObject collectionEntry = LCObject('Collection');
+        collectionEntry['user'] = currentUser;
+        collectionEntry['postType'] = postType;
+        if (postType == 'Project') {
+            collectionEntry['collectedProjectPost'] = LCObject.createWithoutData('ProjectPost', postId);
+        } else if (postType == 'Talent') {
+            collectionEntry['collectedTalentPost'] = LCObject.createWithoutData('TalentPost', postId);
+        }
+        await collectionEntry.save();
+      }
+      return true;
+    } catch (e) {
+      print('Error toggling collection status: $e');
+      return false;
+    }
+  }
+
+  // 检查帖子是否已被当前用户收藏
+  Future<bool> isPostCollected(String postId, String postType) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return false;
+
+    LCQuery<LCObject> query = LCQuery('Collection');
+    query.whereEqualTo('user', currentUser);
+    query.whereEqualTo('postType', postType);
+    if (postType == 'Project') {
+        query.whereEqualTo('collectedProjectPost', LCObject.createWithoutData('ProjectPost', postId));
+    } else if (postType == 'Talent') {
+        query.whereEqualTo('collectedTalentPost', LCObject.createWithoutData('TalentPost', postId));
+    }
+    // 设置limit为1，只需要知道是否存在即可
+    query.limit(1);
+    int? count = await query.count();
+    return (count ?? 0) > 0;
   }
 } 

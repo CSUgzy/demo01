@@ -38,8 +38,15 @@ class ProjectPost {
       try {
         final List<dynamic> decodedList = json.decode(talentNeedsJson);
         for (var item in decodedList) {
-          if (item is Map<String, dynamic>) {
-            parsedTalentNeeds.add(item);
+          if (item is Map) {
+            // 安全地转换Map<dynamic, dynamic>到Map<String, dynamic>
+            final Map<String, dynamic> safeNeed = {};
+            item.forEach((key, value) {
+              if (key is String) {
+                safeNeed[key] = value;
+              }
+            });
+            parsedTalentNeeds.add(safeNeed);
           }
         }
       } catch (e) {
