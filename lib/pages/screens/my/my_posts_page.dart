@@ -4,6 +4,7 @@ import '../../../models/project_post_model.dart';
 import '../../../models/talent_post_model.dart';
 import '../../../services/post_service.dart';
 import '../detail/post_detail_page.dart';
+import 'edit_post_page.dart'; // 导入编辑页面
 import 'dart:convert';
 
 // 标签类型枚举 - 保留用于其他地方可能的引用
@@ -196,6 +197,34 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
     }
   }
 
+  // 编辑帖子
+  Future<void> _editPost(LCObject post) async {
+    final String? className = post.className;
+    if (className == null) {
+      print('Error: className is null');
+      return;
+    }
+    
+    final String postId = post.objectId!;
+    final String postType = className == 'ProjectPost' ? 'Project' : 'Talent';
+    
+    // 导航到编辑页面
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditPostPage(
+          postId: postId,
+          postType: postType,
+        ),
+      ),
+    );
+    
+    // 如果编辑成功，刷新帖子列表
+    if (result == true) {
+      _loadPosts();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 计算宽度收缩比例
@@ -289,10 +318,7 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
                 post: post,
                 userAvatarUrl: _userAvatarUrl,
                 onDelete: () => _deletePost(post, tabIndex),
-                onEdit: () {
-                  // TODO: 导航到编辑页面
-                  print('编辑帖子: ${post.objectId}');
-                },
+                onEdit: () => _editPost(post),
               );
             },
           ),
@@ -526,7 +552,7 @@ class MyPostCardItem extends StatelessWidget {
                     Icons.edit_outlined,
                     '编辑',
                     onEdit,
-                    Colors.grey[600]!,
+                    Colors.blue[700]!,
                   ),
                   const SizedBox(width: 16),
                   
@@ -593,7 +619,7 @@ class MyPostCardItem extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.grey[200],
+          color: color.withOpacity(0.1), // 使用文字颜色的透明版本作为背景
           borderRadius: BorderRadius.circular(8),
         ),
         child: Row(
@@ -606,6 +632,7 @@ class MyPostCardItem extends StatelessWidget {
               style: TextStyle(
                 fontSize: 14,
                 color: color,
+                fontWeight: FontWeight.w500, // 稍微加粗文字
               ),
             ),
           ],

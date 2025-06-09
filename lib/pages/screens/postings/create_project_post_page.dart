@@ -760,7 +760,7 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
             const SizedBox(height: 12),
             
             // 工作地点
-            const Text('工作地点'),
+            const Text('所在城市'),
             const SizedBox(height: 4),
             TextFormField(
               controller: requirement.workLocationController,

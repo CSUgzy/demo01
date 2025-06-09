@@ -389,4 +389,182 @@ class PostService {
       return [];
     }
   }
+  
+  // 更新项目帖子
+  Future<bool> updateProjectPost({
+    required String postId,
+    required String projectName,
+    required String projectStatus,
+    required String projectIntro,
+    String? projectDetails,
+    required List<Map<String, dynamic>> talentNeeds,
+    required List<String> projectTags,
+    String? contactWeChat,
+    String? contactEmail,
+    String? contactPhone,
+  }) async {
+    try {
+      LCUser? currentUser = await _getCurrentUser();
+      if (currentUser == null) {
+        print('更新项目失败: 用户未登录');
+        return false;
+      }
+
+      print('开始更新项目帖子...');
+      
+      // 获取项目帖子对象
+      LCObject projectPost = LCObject.createWithoutData('ProjectPost', postId);
+      
+      // 设置所有基本字段
+      projectPost['projectName'] = projectName;
+      projectPost['projectStatus'] = projectStatus;
+      projectPost['projectIntro'] = projectIntro;
+      projectPost['projectTags'] = projectTags;
+      
+      if (projectDetails != null) {
+        projectPost['projectDetails'] = projectDetails;
+      }
+      
+      if (contactWeChat != null) {
+        projectPost['contactWeChat'] = contactWeChat;
+      } else {
+        projectPost.unset('contactWeChat');
+      }
+      
+      if (contactEmail != null) {
+        projectPost['contactEmail'] = contactEmail;
+      } else {
+        projectPost.unset('contactEmail');
+      }
+      
+      if (contactPhone != null) {
+        projectPost['contactPhone'] = contactPhone;
+      } else {
+        projectPost.unset('contactPhone');
+      }
+      
+      // 处理人才需求数据
+      print('处理人才需求数据...');
+      
+      try {
+        Map<String, dynamic> talentNeedsObject = {};
+        
+        for (int i = 0; i < talentNeeds.length; i++) {
+          var need = talentNeeds[i];
+          talentNeedsObject['need_$i'] = {
+            'role': need['role'].toString(),
+            'skills': need['skills'],
+            'count': need['count'] is int ? need['count'] : int.parse(need['count'].toString()),
+            'cooperationType': need['cooperationType'].toString(),
+            'workLocation': need['workLocation'],
+          };
+        }
+        
+        projectPost['talentNeeds'] = talentNeedsObject;
+        print('保存talentNeeds为对象格式');
+      } catch (e) {
+        print('保存talentNeeds为对象格式失败: $e');
+      }
+      
+      // 将talentNeeds转换为JSON字符串作为备份
+      try {
+        String talentNeedsJson = jsonEncode(talentNeeds);
+        projectPost['talentNeedsJson'] = talentNeedsJson;
+        print('保存talentNeedsJson字符串');
+      } catch (e) {
+        print('保存talentNeedsJson字符串失败: $e');
+      }
+      
+      // 保存对象
+      print('保存更新后的项目帖子到LeanCloud...');
+      await projectPost.save();
+      print('项目帖子更新成功!');
+      return true;
+    } catch (e) {
+      if (e is LCException) {
+        print('更新项目失败: 错误码 ${e.code}, 错误信息 ${e.message}');
+      } else {
+        print('更新项目失败: $e');
+      }
+      return false;
+    }
+  }
+  
+  // 更新人才帖子
+  Future<bool> updateTalentPost({
+    required String postId,
+    required String title,
+    required String coreSkillsText,
+    required List<String> coreSkillsTags,
+    required String detailedIntro,
+    required List<String> expectedCooperationMethods,
+    required List<String> expectedDomains,
+    required String expectedCity,
+    bool acceptsRemote = false,
+    String? expectedSalary,
+    String? contactWeChat,
+    String? contactEmail,
+    String? contactPhone
+  }) async {
+    try {
+      print('开始更新人才帖子...');
+      
+      LCUser? currentUser = await _getCurrentUser();
+      if (currentUser == null) {
+        print('更新人才帖子失败: 用户未登录');
+        return false;
+      }
+      
+      // 获取人才帖子对象
+      LCObject talentPost = LCObject.createWithoutData('TalentPost', postId);
+      
+      // 更新基本字段
+      talentPost['title'] = title;
+      talentPost['coreSkillsText'] = coreSkillsText;
+      talentPost['coreSkillsTags'] = coreSkillsTags;
+      talentPost['detailedIntro'] = detailedIntro;
+      talentPost['expectedCooperationMethods'] = expectedCooperationMethods;
+      talentPost['expectedDomains'] = expectedDomains;
+      talentPost['expectedCity'] = expectedCity;
+      talentPost['acceptsRemote'] = acceptsRemote;
+
+      // 更新可选字段
+      if (expectedSalary != null && expectedSalary.isNotEmpty) {
+        talentPost['expectedSalary'] = expectedSalary;
+      } else {
+        talentPost.unset('expectedSalary');
+      }
+      
+      if (contactWeChat != null && contactWeChat.isNotEmpty) {
+        talentPost['contactWeChat'] = contactWeChat;
+      } else {
+        talentPost.unset('contactWeChat');
+      }
+      
+      if (contactEmail != null && contactEmail.isNotEmpty) {
+        talentPost['contactEmail'] = contactEmail;
+      } else {
+        talentPost.unset('contactEmail');
+      }
+      
+      if (contactPhone != null && contactPhone.isNotEmpty) {
+        talentPost['contactPhone'] = contactPhone;
+      } else {
+        talentPost.unset('contactPhone');
+      }
+
+      // 保存更新
+      print('保存更新后的人才帖子到LeanCloud...');
+      await talentPost.save();
+      print('人才帖子更新成功!');
+      return true;
+    } catch (e) {
+      if (e is LCException) {
+        print('更新人才帖子失败: 错误码 ${e.code}, 错误信息 ${e.message}');
+      } else {
+        print('更新人才帖子失败: $e');
+      }
+      return false;
+    }
+  }
 } 
