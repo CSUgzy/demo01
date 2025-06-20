@@ -36,8 +36,20 @@ class UserService {
 
       // 更新其他资料
       for (var entry in data.entries) {
-        if (entry.key != 'icon' && entry.value != null) {
-          currentUser[entry.key] = entry.value;
+        if (entry.key != 'icon') {
+          // 处理空字符串，特别是对于mobilePhoneNumber字段
+          if (entry.value != null) {
+            if (entry.key == 'mobilePhoneNumber' && entry.value.toString().trim().isEmpty) {
+              // 如果手机号是空字符串，设置为null
+              currentUser[entry.key] = null;
+            } else if (entry.value is String && entry.value.toString().trim().isEmpty) {
+              // 对于其他字符串类型字段，如果是空字符串，也设置为null
+              currentUser[entry.key] = null;
+            } else {
+              // 其他情况正常赋值
+              currentUser[entry.key] = entry.value;
+            }
+          }
         }
       }
 

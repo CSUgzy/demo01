@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:leancloud_storage/leancloud.dart';
 import '../../../services/post_service.dart';
+import '../../../services/auth_service.dart';
+import '../../../services/notification_service.dart';
+import '../auth/email_login_page.dart';
+import '../settings/account_security_page.dart';
+import '../notifications/notification_page.dart';
+import '../settings/privacy_policy_page.dart';
+import '../settings/help_and_feedback_page.dart';
+import '../settings/about_us_page.dart';
 import 'my_posts_page.dart';
 import 'my_collections_page.dart';
 import 'edit_profile_page.dart';
+import '../../../utils/feedback_service.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -12,18 +21,55 @@ class MyPage extends StatefulWidget {
   State<MyPage> createState() => _MyPageState();
 }
 
-class _MyPageState extends State<MyPage> {
+class _MyPageState extends State<MyPage> with WidgetsBindingObserver {
   LCUser? _currentUser;
   bool _isLoading = true;
   int _collectionsCount = 0;
   int _postsCount = 0;
   int _followingCount = 0;
+  int _unreadCount = 0;
   final PostService _postService = PostService();
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadCurrentUserProfile();
+    _loadUnreadNotificationCount();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 当应用从后台恢复时，重新获取未读消息数量
+      _loadUnreadNotificationCount();
+    }
+  }
+
+  // 加载未读消息数量
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      if (await LCUser.getCurrent() != null) {
+        final count = await _notificationService.getUnreadNotificationCount();
+        if (mounted) {
+          setState(() {
+            _unreadCount = count;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading unread notification count: $e");
+      if (e is LCException) {
+        print('LeanCloud error code: ${(e as LCException).code}, message: ${(e as LCException).message}');
+      }
+    }
   }
 
   Future<void> _loadCurrentUserProfile() async {
@@ -70,18 +116,52 @@ class _MyPageState extends State<MyPage> {
     }
   }
 
+  // 导航到通知页面
+  void _navigateToNotifications() async {
+    if (mounted) {
+      print("导航到通知页面");
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NotificationPage()),
+      );
+      
+      // 从通知页面返回后，刷新未读消息数量
+      _loadUnreadNotificationCount();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text("我的"),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_outlined),
-            onPressed: () {
-              // 导航到消息页面
-              print("导航到消息页面");
-            },
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none_outlined),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_unreadCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      _unreadCount > 99 ? '99+' : '$_unreadCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -105,6 +185,15 @@ class _MyPageState extends State<MyPage> {
                   
                   // 2. 数据统计区块
                   _buildStatsSection(),
+                  
+                  // 分隔区块
+                  Container(
+                    height: 10,
+                    color: const Color(0xFFF5F7FA),
+                  ),
+                  
+                  // 3. 设置功能列表
+                  _buildSettingsList(),
                 ],
               ),
             ),
@@ -231,33 +320,54 @@ class _MyPageState extends State<MyPage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyPostsPage()),
-              ).then((_) {
-                // 返回时刷新页面数据
-                _loadCurrentUserProfile();
-              });
-            },
-            child: _buildStatItem("我发布的", "$_postsCount"),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyPostsPage()),
+                ).then((_) {
+                  // 返回时刷新页面数据
+                  _loadCurrentUserProfile();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildStatItem("我发布的", "$_postsCount"),
+              ),
+            ),
           ),
           _buildVerticalDivider(),
-          GestureDetector(
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const MyCollectionsPage()),
-              ).then((_) {
-                // 返回时刷新页面数据
-                _loadCurrentUserProfile();
-              });
-            },
-            child: _buildStatItem("我收藏的", "$_collectionsCount"),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const MyCollectionsPage()),
+                ).then((_) {
+                  // 返回时刷新页面数据
+                  _loadCurrentUserProfile();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildStatItem("我收藏的", "$_collectionsCount"),
+              ),
+            ),
           ),
           _buildVerticalDivider(),
-          _buildStatItem("我关注的", "$_followingCount"),
+          Expanded(
+            child: InkWell(
+              onTap: () {
+                print("导航到我关注的页面");
+                // TODO: 导航到关注页面
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: _buildStatItem("我关注的", "$_followingCount"),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -274,41 +384,154 @@ class _MyPageState extends State<MyPage> {
   
   // 构建统计项目
   Widget _buildStatItem(String label, String value) {
-    return GestureDetector(
-      onTap: () {
-        if (label == "我收藏的") {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MyCollectionsPage()),
-          );
-        } else if (label == "我发布的") {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const MyPostsPage()),
-          );
-        } else {
-          print("导航到$label页面");
-        }
-      },
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // 3. 设置功能列表
+  Widget _buildSettingsList() {
+    return Container(
+      color: Colors.white,
       child: Column(
         children: [
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
+          // 账号与安全
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            title: const Text("账号与安全", style: TextStyle(fontSize: 16)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              print("导航到账号与安全页面");
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AccountSecurityPage()),
+              );
+            },
           ),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 14,
-              color: Colors.grey,
+          Divider(height: 1, indent: 24, endIndent: 24, color: Colors.grey[200]),
+          
+          // 隐私设置
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            title: const Text("隐私政策", style: TextStyle(fontSize: 16)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              print("导航到隐私政策页面");
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()),
+              );
+            },
+          ),
+          Divider(height: 1, indent: 24, endIndent: 24, color: Colors.grey[200]),
+          
+          // 帮助与反馈
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            title: const Text("帮助与反馈", style: TextStyle(fontSize: 16)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              print("导航到帮助与反馈页面");
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const HelpAndFeedbackPage()),
+              );
+            },
+          ),
+          Divider(height: 1, indent: 24, endIndent: 24, color: Colors.grey[200]),
+          
+          // 关于我们
+          ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
+            title: const Text("关于我们", style: TextStyle(fontSize: 16)),
+            trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+            onTap: () {
+              print("导航到关于我们页面");
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const AboutUsPage()),
+              );
+            },
+          ),
+          
+          // 退出登录按钮
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+            child: SizedBox(
+              width: double.infinity,
+              child: TextButton(
+                onPressed: _handleLogout,
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    side: BorderSide.none,
+                  ),
+                ),
+                child: const Text(
+                  "退出登录",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
             ),
           ),
         ],
       ),
     );
+  }
+  
+  // 处理退出登录
+  Future<void> _handleLogout() async {
+    // 显示确认对话框
+    final bool confirm = await FeedbackService.showConfirmationDialog(
+      context,
+      title: '确认退出',
+      content: '确定要退出登录吗？',
+      confirmText: '退出',
+      cancelText: '取消',
+    );
+    
+    // 如果用户确认退出
+    if (confirm) {
+      try {
+        // 使用AuthService的logout方法
+        await AuthService().logout();
+        
+        if (mounted) {
+          // 导航到登录页面，并清除所有之前的页面栈
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const EmailLoginPage()),
+            (Route<dynamic> route) => false, // 移除所有现有路由
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          FeedbackService.showErrorSnackBar(context, '退出登录失败: $e');
+        }
+      }
+    }
   }
 } 

@@ -215,6 +215,283 @@ class FeedService {
     }
   }
 
+  /// 使用LeanCloud全文搜索功能实现搜索
+  Future<Map<String, dynamic>> search(String keyword, {int skip = 0, int limit = 10}) async {
+    if (keyword.isEmpty) return {'results': <LCObject>[], 'totalHits': 0, 'hasMore': false, 'currentSkip': skip};
+
+    print('FeedService.search - 开始搜索关键词: $keyword, skip: $skip, limit: $limit');
+
+    try {
+      List<LCObject> allResults = [];
+      int projectTotalHits = 0;
+      int talentTotalHits = 0;
+      
+      // 创建项目帖子的搜索查询
+      LCSearchQuery<LCObject> projectSearchQuery = LCSearchQuery<LCObject>('ProjectPost');
+      projectSearchQuery.queryString(keyword);
+      projectSearchQuery.limit(limit);
+      projectSearchQuery.skip(skip);
+      // 指定高亮显示的字段 - 使用字符串列表
+      projectSearchQuery.highlights(['projectName', 'projectIntro']);
+      // 包含发布者信息
+      projectSearchQuery.include(['publisher']);
+      
+      print('FeedService.search - 准备执行项目搜索查询，skip: $skip, limit: $limit');
+      
+      // 执行项目搜索
+      try {
+        final projectResponse = await projectSearchQuery.find();
+        print('FeedService.search - 项目搜索查询执行完成');
+        
+        if (projectResponse != null) {
+          final results = projectResponse.results;
+          if (results != null && results.isNotEmpty) {
+            print('FeedService.search - 项目搜索返回结果数: ${results.length}');
+            allResults.addAll(results);
+            
+            // 打印项目结果详情
+            for (var project in results) {
+              try {
+                print('找到项目: ${project['projectName'] ?? '未知名称'}, ID: ${project.objectId}');
+              } catch (e) {
+                print('处理项目结果时出错: $e');
+              }
+            }
+          }
+          
+          // 获取总命中数
+          projectTotalHits = projectResponse.hits ?? 0;
+          
+          print('项目搜索结果数: $projectTotalHits, 当前返回: ${results?.length ?? 0}, skip: $skip, limit: $limit');
+        } else {
+          print('FeedService.search - 项目搜索响应为null');
+        }
+      } catch (e) {
+        print('项目搜索出错: $e');
+        print('错误堆栈: ${StackTrace.current}');
+        // 继续执行人才搜索
+      }
+      
+      print('FeedService.search - 准备执行人才搜索查询，skip: $skip, limit: $limit');
+      
+      // 创建人才帖子的搜索查询
+      LCSearchQuery<LCObject> talentSearchQuery = LCSearchQuery<LCObject>('TalentPost');
+      talentSearchQuery.queryString(keyword);
+      talentSearchQuery.limit(limit);
+      talentSearchQuery.skip(skip);
+      // 指定高亮显示的字段 - 使用字符串列表
+      talentSearchQuery.highlights(['title', 'detailedIntro', 'coreSkillsText']);
+      // 包含发布者信息
+      talentSearchQuery.include(['publisher']);
+      
+      // 执行人才搜索
+      try {
+        final talentResponse = await talentSearchQuery.find();
+        print('FeedService.search - 人才搜索查询执行完成');
+        
+        if (talentResponse != null) {
+          final results = talentResponse.results;
+          if (results != null && results.isNotEmpty) {
+            print('FeedService.search - 人才搜索返回结果数: ${results.length}');
+            allResults.addAll(results);
+            
+            // 打印人才结果详情
+            for (var talent in results) {
+              try {
+                print('找到人才: ${talent['title'] ?? '未知标题'}, ID: ${talent.objectId}');
+              } catch (e) {
+                print('处理人才结果时出错: $e');
+              }
+            }
+          }
+          
+          // 获取总命中数
+          talentTotalHits = talentResponse.hits ?? 0;
+          
+          print('人才搜索结果数: $talentTotalHits, 当前返回: ${results?.length ?? 0}, skip: $skip, limit: $limit');
+        } else {
+          print('FeedService.search - 人才搜索响应为null');
+        }
+      } catch (e) {
+        print('人才搜索出错: $e');
+        print('错误堆栈: ${StackTrace.current}');
+      }
+      
+      // 计算总命中数
+      int totalHits = projectTotalHits + talentTotalHits;
+      
+      print('FeedService.search - 搜索完成，总结果数: ${allResults.length}, 总命中数: $totalHits');
+      
+      // 按创建时间排序
+      try {
+        allResults.sort((a, b) {
+          DateTime? aTime = a['createdAt'];
+          DateTime? bTime = b['createdAt'];
+          return (bTime ?? DateTime.now()).compareTo(aTime ?? DateTime.now());
+        });
+      } catch (e) {
+        print('排序搜索结果时出错: $e');
+        // 排序失败时不影响返回结果
+      }
+      
+      // 计算是否有更多结果
+      bool hasMore = (skip + allResults.length) < totalHits;
+      
+      // 返回结果、总命中数、是否有更多结果和当前skip值
+      return {
+        'results': allResults,
+        'totalHits': totalHits,
+        'hasMore': hasMore,
+        'currentSkip': skip
+      };
+    } catch (e) {
+      print('全文搜索执行出错: $e');
+      print('错误堆栈: ${StackTrace.current}');
+      
+      // 如果全文搜索失败，回退到普通查询
+      print('回退到普通查询...');
+      return await searchWithRegularQuery(keyword);
+    }
+  }
+  
+  /// 使用普通查询实现搜索（临时解决方案）
+  Future<Map<String, dynamic>> searchWithRegularQuery(String keyword) async {
+    print('FeedService.searchWithRegularQuery - 使用普通查询搜索: $keyword');
+    try {
+      if (keyword.isEmpty) {
+        print('FeedService.searchWithRegularQuery - 关键词为空，返回空结果');
+        return {
+          'results': <LCObject>[],
+          'projectSid': null,
+          'talentSid': null,
+          'hasMore': false
+        };
+      }
+      
+      print('FeedService.searchWithRegularQuery - 开始执行搜索...');
+      final results = await _fallbackSearch(keyword);
+      print('FeedService.searchWithRegularQuery - 普通查询完成，结果数: ${results.length}');
+      
+      // 打印每个结果的类型和标识信息
+      for (var obj in results) {
+        try {
+          if (obj.className == 'ProjectPost') {
+            print('找到项目: ${obj['projectName'] ?? '未知项目名'}');
+          } else if (obj.className == 'TalentPost') {
+            print('找到人才: ${obj['title'] ?? '未知标题'}');
+          } else {
+            print('找到未知类型: ${obj.className}');
+          }
+        } catch (e) {
+          print('处理搜索结果时出错: $e');
+        }
+      }
+      
+      return {
+        'results': results,
+        'projectSid': null,
+        'talentSid': null,
+        'hasMore': false // 普通查询不支持分页
+      };
+    } catch (e) {
+      print('普通查询搜索出错: $e');
+      print('错误堆栈: ${StackTrace.current}');
+      return {
+        'results': <LCObject>[],
+        'projectSid': null,
+        'talentSid': null,
+        'hasMore': false
+      };
+    }
+  }
+  
+  /// 普通查询搜索（作为全文搜索的备选方案）
+  Future<List<LCObject>> _fallbackSearch(String keyword) async {
+    print('FeedService._fallbackSearch - 开始执行普通查询: $keyword');
+    try {
+      // 搜索项目帖子
+      LCQuery<LCObject> projectQuery = LCQuery('ProjectPost');
+      projectQuery.whereContains('projectName', keyword);
+      LCQuery<LCObject> projectIntroQuery = LCQuery('ProjectPost');
+      projectIntroQuery.whereContains('projectIntro', keyword);
+      LCQuery<LCObject> combinedProjectQuery = LCQuery.or([projectQuery, projectIntroQuery]);
+      combinedProjectQuery.include('publisher');
+      combinedProjectQuery.limit(10);
+      
+      // 搜索人才帖子
+      LCQuery<LCObject> talentQuery = LCQuery('TalentPost');
+      talentQuery.whereContains('title', keyword);
+      LCQuery<LCObject> talentIntroQuery = LCQuery('TalentPost');
+      talentIntroQuery.whereContains('detailedIntro', keyword);
+      LCQuery<LCObject> talentSkillsQuery = LCQuery('TalentPost');
+      talentSkillsQuery.whereContains('coreSkillsText', keyword);
+      LCQuery<LCObject> combinedTalentQuery = LCQuery.or([talentQuery, talentIntroQuery, talentSkillsQuery]);
+      combinedTalentQuery.include('publisher');
+      combinedTalentQuery.limit(10);
+      
+      print('FeedService._fallbackSearch - 执行项目和人才查询');
+      
+      // 并行执行两个查询
+      List<List<LCObject>?> results;
+      try {
+        results = await Future.wait([
+          combinedProjectQuery.find(),
+          combinedTalentQuery.find()
+        ]);
+        print('FeedService._fallbackSearch - 查询执行完成');
+      } catch (e) {
+        print('FeedService._fallbackSearch - 查询执行出错: $e');
+        print('错误堆栈: ${StackTrace.current}');
+        return [];
+      }
+      
+      List<LCObject> projectResults = results[0] ?? [];
+      List<LCObject> talentResults = results[1] ?? [];
+      
+      print('FeedService._fallbackSearch - 项目结果数: ${projectResults.length}, 人才结果数: ${talentResults.length}');
+      
+      // 打印项目结果详情
+      for (var project in projectResults) {
+        try {
+          print('项目: ${project['projectName'] ?? '未知名称'}, ID: ${project.objectId}');
+        } catch (e) {
+          print('处理项目结果时出错: $e');
+        }
+      }
+      
+      // 打印人才结果详情
+      for (var talent in talentResults) {
+        try {
+          print('人才: ${talent['title'] ?? '未知标题'}, ID: ${talent.objectId}');
+        } catch (e) {
+          print('处理人才结果时出错: $e');
+        }
+      }
+      
+      // 合并结果
+      List<LCObject> allResults = [...projectResults, ...talentResults];
+      
+      // 按创建时间排序
+      try {
+        allResults.sort((a, b) {
+          DateTime? aTime = a['createdAt'];
+          DateTime? bTime = b['createdAt'];
+          return (bTime ?? DateTime.now()).compareTo(aTime ?? DateTime.now());
+        });
+      } catch (e) {
+        print('排序搜索结果时出错: $e');
+        // 排序失败时不影响返回结果
+      }
+      
+      print('FeedService._fallbackSearch - 返回合并结果，总数: ${allResults.length}');
+      return allResults;
+    } catch (e) {
+      print('备选搜索出错: $e');
+      print('错误堆栈: ${StackTrace.current}');
+      return [];
+    }
+  }
+
   void resetPage() {
     _projectPageSkip = 0;
     _talentPageSkip = 0;

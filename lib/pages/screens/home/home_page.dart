@@ -7,6 +7,10 @@ import '../../../widgets/home/project_post_card.dart';
 import '../../../widgets/home/talent_post_card.dart';
 import '../../../constants/predefined_tags.dart';
 import '../../screens/detail/post_detail_page.dart';
+import '../../../services/notification_service.dart';
+import '../notifications/notification_page.dart';
+import '../../../utils/feedback_service.dart';
+import '../search/search_result_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -15,7 +19,7 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
+class _HomePageState extends State<HomePage> with WidgetsBindingObserver {
   // 状态变量
   List<dynamic> _allFeedItems = []; // 存储所有未筛选的数据
   List<dynamic> _displayedFeedItems = []; // 存储筛选后要显示的数据
@@ -23,16 +27,26 @@ class _HomePageState extends State<HomePage> {
   bool _canLoadMore = true;
   final ScrollController _scrollController = ScrollController();
   final FeedService _feedService = FeedService();
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
   
   // 筛选相关状态
   String? _selectedDomain;
   String? _selectedMainIntent; // 可为 'Talent', 'Project', 或 null 表示"全部"
 
+  // 通知服务
+  final NotificationService _notificationService = NotificationService();
+  // 未读通知数量
+  int _unreadNotificationCount = 0;
+  
   @override
   void initState() {
     super.initState();
+    // 添加生命周期观察者
+    WidgetsBinding.instance.addObserver(this);
     // 加载初始数据
     _loadInitialData();
+    _loadUnreadNotificationCount();
     
     // 添加滚动监听器，实现上拉加载更多
     _scrollController.addListener(() {
@@ -47,9 +61,23 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
+    // 移除生命周期观察者
+    WidgetsBinding.instance.removeObserver(this);
     // 移除滚动监听器
     _scrollController.dispose();
+    // 销毁搜索控制器
+    _searchController.dispose();
+    // 销毁焦点节点
+    _searchFocusNode.dispose();
     super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // 当应用从后台恢复时，重新获取未读消息数量
+      _loadUnreadNotificationCount();
+    }
   }
 
   // 加载初始数据
@@ -188,9 +216,7 @@ class _HomePageState extends State<HomePage> {
   // 显示错误提示
   void _showErrorSnackBar(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
+      FeedbackService.showErrorSnackBar(context, message);
     }
   }
 
@@ -397,6 +423,66 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // 加载未读消息数量
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      if (await LCUser.getCurrent() != null) {
+        final count = await _notificationService.getUnreadNotificationCount();
+        if (mounted) {
+          setState(() {
+            _unreadNotificationCount = count;
+          });
+        }
+      }
+    } catch (e) {
+      print("Error loading unread notification count: $e");
+    }
+  }
+  
+  // 导航到通知页面
+  void _navigateToNotifications() async {
+    if (mounted) {
+      print("导航到通知页面");
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const NotificationPage()),
+      );
+      
+      // 从通知页面返回后，刷新未读消息数量
+      _loadUnreadNotificationCount();
+    }
+  }
+
+  // 导航到搜索结果页
+  void _navigateToSearchResultPage(String keyword) async {
+    final trimmedKeyword = keyword.trim();
+    if (trimmedKeyword.isNotEmpty) {
+      print('HomePage - 准备导航到搜索结果页，关键词: $trimmedKeyword');
+      
+      // 先清空搜索框，避免用户返回时看到之前的搜索词
+      _searchController.clear();
+      // 移除焦点
+      _searchFocusNode.unfocus();
+      
+      // 导航到搜索结果页
+      await Navigator.push(
+        context, 
+        MaterialPageRoute(
+          builder: (context) => SearchResultPage(keyword: trimmedKeyword),
+        )
+      );
+      
+      print('HomePage - 从搜索结果页返回');
+      
+      // 从搜索结果页返回后，确保搜索框是空的
+      if (_searchController.text.isNotEmpty) {
+        _searchController.clear();
+      }
+    } else {
+      print('HomePage - 搜索关键词为空，不导航');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // 计算宽度收缩比例
@@ -406,37 +492,60 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
-        title: Container(
-          height: 40,
-          decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: const TextField(
-            enabled: false, // 暂时禁用，只作为UI展示
-            decoration: InputDecoration(
-              hintText: '搜索项目或人才',
-              prefixIcon: Icon(Icons.search),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(vertical: 10),
+        title: GestureDetector(
+          onTap: () {
+            // 当整个容器被点击时，让输入框获得焦点
+            _searchFocusNode.requestFocus();
+          },
+          child: Container(
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.grey[200],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocusNode,
+              decoration: const InputDecoration(
+                hintText: '搜索项目或人才',
+                prefixIcon: Icon(Icons.search),
+                border: InputBorder.none,
+                contentPadding: EdgeInsets.symmetric(vertical: 10),
+              ),
+              textInputAction: TextInputAction.search,
+              onSubmitted: (String keyword) {
+                _navigateToSearchResultPage(keyword);
+              },
             ),
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none_outlined),
-            tooltip: '消息',
-            onPressed: () {
-              // 导航到消息中心页面，暂时打印日志
-              print('导航到消息中心页面');
-              // TODO: 导航到NotificationPage
-              // Navigator.push(
-              //   context,
-              //   MaterialPageRoute(
-              //     builder: (context) => NotificationPage(),
-              //   ),
-              // );
-            },
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_none_outlined),
+                onPressed: _navigateToNotifications,
+              ),
+              if (_unreadNotificationCount > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      _unreadNotificationCount > 99 ? '99+' : '$_unreadNotificationCount',
+                      style: const TextStyle(color: Colors.white, fontSize: 10),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
         bottom: PreferredSize(

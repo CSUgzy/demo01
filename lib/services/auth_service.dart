@@ -39,14 +39,42 @@ class AuthService {
   }
 
   // 登录方法 (邮箱+密码)
-  Future<LCUser?> loginWithEmailPassword(String email, String password) async {
+  Future<(LCUser?, String?)> loginWithEmailPassword(String email, String password) async {
     try {
+      print('尝试登录: $email');
+      
       // 执行登录
       LCUser? user = await LCUser.login(email, password);
-      return user;
+      print('登录成功: ${user?.objectId}');
+      return (user, null);
     } catch (e) {
-      print('登录失败: $e');
-      return null;
+      String errorMessage;
+      if (e is LCException) {
+        print('LeanCloud登录异常: 错误码=${e.code}, 消息=${e.message}');
+        switch (e.code) {
+          case 210:
+            errorMessage = '用户名和密码不匹配';
+            break;
+          case 211:
+            errorMessage = '该用户不存在';
+            break;
+          case 216:
+            errorMessage = '未设置邮箱，请使用用户名登录';
+            break;
+          case 219:
+            errorMessage = '登录失败次数超过限制，请稍后再试';
+            break;
+          case -1:
+            errorMessage = '网络连接失败，请检查网络设置';
+            break;
+          default:
+            errorMessage = '登录失败：${e.message}';
+        }
+      } else {
+        print('登录失败(非LeanCloud异常): $e');
+        errorMessage = '登录失败：网络错误或服务器异常';
+      }
+      return (null, errorMessage);
     }
   }
 
@@ -101,9 +129,12 @@ class AuthService {
   // 退出登录
   Future<void> logout() async {
     try {
+      print('尝试退出登录');
       await LCUser.logout();
+      print('退出登录成功');
     } catch (e) {
       print('退出登录失败: $e');
+      rethrow; // 重新抛出异常，让调用者处理
     }
   }
 } 

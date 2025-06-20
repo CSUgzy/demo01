@@ -10,6 +10,7 @@ import 'package:city_pickers/city_pickers.dart';
 import '../../../constants/predefined_tags.dart';
 import '../../../constants/cooperation_options.dart';
 import '../../../widgets/custom_dropdown_select.dart';
+import '../../../utils/feedback_service.dart';
 
 // 人才需求数据类 - 专门为编辑页面使用的修改版
 class TalentRequirement {
@@ -294,25 +295,19 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
     if (!_formKey.currentState!.validate()) return;
     
     if (_selectedDomains.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少选择一个项目领域')),
-      );
+      FeedbackService.showToast(context, '请至少选择一个项目领域', isError: true);
       return;
     }
 
     if (_talentRequirements.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请至少添加一个人才需求')),
-      );
+      FeedbackService.showToast(context, '请至少添加一个人才需求', isError: true);
       return;
     }
 
     // 检查每个人才需求是否有效
     for (var requirement in _talentRequirements) {
       if (!requirement.isValid()) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('请完善所有人才需求信息')),
-        );
+        FeedbackService.showToast(context, '请完善所有人才需求信息', isError: true);
         return;
       }
     }
@@ -355,15 +350,11 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
 
       if (result && mounted) {
         // 显示成功提示
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('项目帖子更新成功')),
-        );
+        FeedbackService.showSuccessToast(context, '项目帖子更新成功');
         // 返回上一页
         Navigator.of(context).pop(true);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('更新失败，请重试')),
-        );
+        FeedbackService.showErrorToast(context, '更新失败，请重试');
       }
     } catch (e) {
       setState(() {
@@ -371,9 +362,7 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
       });
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新时出错: $e')),
-        );
+        FeedbackService.showErrorToast(context, '更新时出错: $e');
       }
     }
   }
@@ -465,7 +454,7 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
                   _buildSectionTitle('项目阶段', true),
                   CustomDropdownSelect<String>(
                     hint: '请选择当前项目所处阶段',
-                    items: const ['创意阶段', '原型阶段', '开发阶段', '测试阶段', '已上线'],
+                    items: projectStatusOptions,
                     selectedItems: _selectedProjectStatus != null ? [_selectedProjectStatus!] : [],
                     onItemSelected: (value) {
                       setState(() {
@@ -497,12 +486,7 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
                   _buildSectionTitle('项目标签/领域', true),
                   CustomDropdownSelect<String>(
                     hint: '请添加项目所属领域标签，最多5个',
-                    items: const [
-                      '互联网', '人工智能', '大数据', '区块链', '金融科技',
-                      '医疗健康', '教育科技', '电子商务', '社交媒体', '游戏', 
-                      '物联网', '智能硬件', '云计算', '移动应用', '企业服务',
-                      '文化创意', '新零售', '共享经济', '农业科技', '其他'
-                    ].where((domain) => !_selectedDomains.contains(domain)).toList(),
+                    items: predefinedDomains.where((domain) => !_selectedDomains.contains(domain)).toList(),
                     selectedItems: _selectedDomains,
                     onItemSelected: (domain) {
                       setState(() {
@@ -510,8 +494,10 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
                           if (_selectedDomains.length < 5) {
                             _selectedDomains.add(domain);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('最多只能选择5个领域标签')),
+                            FeedbackService.showToast(
+                              context, 
+                              '最多只能选择5个领域标签',
+                              isError: true
                             );
                           }
                         }
@@ -848,17 +834,8 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
             const SizedBox(height: 4),
             CustomDropdownSelect<String>(
               hint: '请选择所需技能，最多5个',
-              items: const [
-                'UI设计', 'UX设计', '平面设计', '产品设计',
-                'Java开发', 'Python开发', 'C++开发', 'Go开发',
-                'Flutter开发', 'React Native开发', 'iOS开发', 'Android开发',
-                'Web前端开发', '后端开发', '全栈开发',
-                '产品经理', '项目经理', '测试工程师', '运维工程师',
-                '数据分析', '算法工程师', '人工智能', '机器学习',
-                '运营', '市场营销', '商务拓展', '内容创作',
-                '客户服务', '翻译',
-                '其他'
-              ].where((skill) => !requirement.selectedSkills.contains(skill)).toList(),
+              items: predefinedSkills
+                .where((skill) => !requirement.selectedSkills.contains(skill)).toList(),
               selectedItems: requirement.selectedSkills,
               onItemSelected: (skill) {
                 setState(() {
@@ -866,8 +843,10 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
                     if (requirement.selectedSkills.length < 5) {
                       requirement.selectedSkills.add(skill);
                     } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('每个需求最多选择5个技能')),
+                      FeedbackService.showToast(
+                        context, 
+                        '每个需求最多选择5个技能',
+                        isError: true
                       );
                     }
                   }
@@ -937,7 +916,7 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
             const SizedBox(height: 4),
             CustomDropdownSelect<String>(
               hint: '请选择合作类型',
-              items: const ['全职', '兼职', '实习', '外包', '志愿者'],
+              items: cooperationMethods,
               selectedItems: requirement.selectedCooperationType != null 
                 ? [requirement.selectedCooperationType!] 
                 : [],
@@ -995,9 +974,7 @@ class _EditProjectPostPageState extends State<EditProjectPostPage> {
                   }
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('选择城市失败: $e')),
-                    );
+                    FeedbackService.showErrorToast(context, '选择城市失败: $e');
                   }
                 }
               },
@@ -1110,30 +1087,22 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
     
     // 验证必选项
     if (_selectedSkills.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择至少一项核心技能')),
-      );
+      FeedbackService.showToast(context, '请选择至少一项核心技能', isError: true);
       return;
     }
 
     if (_selectedCooperationMethods.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择至少一种期望合作方式')),
-      );
+      FeedbackService.showToast(context, '请选择至少一种期望合作方式', isError: true);
       return;
     }
 
     if (_selectedDomains.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择至少一个期望行业/领域')),
-      );
+      FeedbackService.showToast(context, '请选择至少一个期望行业/领域', isError: true);
       return;
     }
 
     if (_cityController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请选择期望城市')),
-      );
+      FeedbackService.showToast(context, '请选择期望城市', isError: true);
       return;
     }
 
@@ -1181,14 +1150,10 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
       });
 
       if (result && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('人才帖子更新成功')),
-        );
+        FeedbackService.showSuccessToast(context, '人才帖子更新成功');
         Navigator.of(context).pop(true);
       } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('更新失败，请重试')),
-        );
+        FeedbackService.showErrorToast(context, '更新失败，请重试');
       }
     } catch (e) {
       setState(() {
@@ -1196,9 +1161,7 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
       });
       
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('更新时出错: $e')),
-        );
+        FeedbackService.showErrorToast(context, '更新时出错: $e');
       }
     }
   }
@@ -1288,17 +1251,8 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
                   _buildSectionTitle('核心技能', true),
                   CustomDropdownSelect<String>(
                     hint: '请选择您的核心技能，最多5个',
-                    items: const [
-                      'UI设计', 'UX设计', '平面设计', '产品设计',
-                      'Java开发', 'Python开发', 'C++开发', 'Go开发',
-                      'Flutter开发', 'React Native开发', 'iOS开发', 'Android开发',
-                      'Web前端开发', '后端开发', '全栈开发',
-                      '产品经理', '项目经理', '测试工程师', '运维工程师',
-                      '数据分析', '算法工程师', '人工智能', '机器学习',
-                      '运营', '市场营销', '商务拓展', '内容创作',
-                      '客户服务', '翻译',
-                      '其他'
-                    ].where((skill) => !_selectedSkills.contains(skill)).toList(),
+                    items: predefinedSkills
+                      .where((skill) => !_selectedSkills.contains(skill)).toList(),
                     selectedItems: _selectedSkills,
                     onItemSelected: (skill) {
                       setState(() {
@@ -1306,8 +1260,10 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
                           if (_selectedSkills.length < 5) {
                             _selectedSkills.add(skill);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('最多只能选择5个技能标签')),
+                            FeedbackService.showToast(
+                              context, 
+                              '最多只能选择5个技能标签',
+                              isError: true
                             );
                           }
                         }
@@ -1386,12 +1342,8 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
                   _buildSectionTitle('期望行业/领域', true),
                   CustomDropdownSelect<String>(
                     hint: '请添加期望合作的行业/领域标签，最多5个',
-                    items: const [
-                      '互联网', '人工智能', '大数据', '区块链', '金融科技',
-                      '医疗健康', '教育科技', '电子商务', '社交媒体', '游戏', 
-                      '物联网', '智能硬件', '云计算', '移动应用', '企业服务',
-                      '文化创意', '新零售', '共享经济', '农业科技', '其他'
-                    ].where((domain) => !_selectedDomains.contains(domain)).toList(),
+                    items: predefinedDomains
+                      .where((domain) => !_selectedDomains.contains(domain)).toList(),
                     selectedItems: _selectedDomains,
                     onItemSelected: (domain) {
                       setState(() {
@@ -1399,8 +1351,10 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
                           if (_selectedDomains.length < 5) {
                             _selectedDomains.add(domain);
                           } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('最多只能选择5个领域标签')),
+                            FeedbackService.showToast(
+                              context, 
+                              '最多只能选择5个领域标签',
+                              isError: true
                             );
                           }
                         }
@@ -1457,9 +1411,7 @@ class _EditTalentPostPageState extends State<EditTalentPostPage> {
                           }
                         } catch (e) {
                           if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('选择城市失败: $e')),
-                            );
+                            FeedbackService.showErrorToast(context, '选择城市失败: $e');
                           }
                         }
                       },

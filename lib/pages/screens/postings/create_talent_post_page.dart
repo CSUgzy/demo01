@@ -6,6 +6,7 @@ import '../../../constants/predefined_tags.dart';
 import '../../../constants/cooperation_options.dart';
 import '../../../services/post_service.dart';
 import '../../../widgets/custom_dropdown_select.dart';
+import '../../../utils/feedback_service.dart';
 
 // 定义一些全局样式常量，与 CreateProjectPostPage 保持一致
 const Color borderColor = Color(0xFFE2E8F0); // 边框颜色 - 浅灰色
@@ -39,41 +40,6 @@ class _CreateTalentPostPageState extends State<CreateTalentPostPage> {
   @override
   void initState() {
     super.initState();
-    _loadUserBio();
-  }
-
-  Future<void> _loadUserBio() async {
-    try {
-      final currentUser = await LCUser.getCurrent();
-      if (currentUser != null) {
-        // 尝试获取用户简介
-        String? userBio;
-        
-        // 尝试从bio字段获取
-        if (currentUser['bio'] != null) {
-          userBio = currentUser['bio'];
-        } 
-        // 尝试从profile.bio字段获取
-        else if (currentUser['profile'] != null && currentUser['profile']['bio'] != null) {
-          userBio = currentUser['profile']['bio'];
-        }
-        
-        // 如果找到了用户简介，则填充到表单
-        if (userBio != null && userBio.isNotEmpty) {
-          setState(() {
-            _detailedIntroController.text = userBio!;
-          });
-          print('成功加载用户简介: $userBio');
-        } else {
-          print('用户简介不存在或为空');
-        }
-      } else {
-        print('当前用户为空，无法加载简介');
-      }
-    } catch (e) {
-      // 加载失败时不处理，用户可以手动填写
-      print('加载用户简介失败: $e');
-    }
   }
 
   @override
@@ -259,28 +225,16 @@ class _CreateTalentPostPageState extends State<CreateTalentPostPage> {
           // 先导航返回，避免Hero动画冲突
           Navigator.of(context).pop();
           
-          // 使用Future.delayed确保在页面导航后再显示SnackBar
+          // 使用FeedbackService显示成功提示
           Future.delayed(const Duration(milliseconds: 300), () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('合作意愿发布成功！')),
-            );
+            if (mounted) {
+              FeedbackService.showSuccessToast(context, '合作意愿发布成功！');
+            }
           });
         } else if (mounted) {
-          print('发布失败，显示错误对话框');
-          // 发布失败，显示对话框
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('提示'),
-              content: const Text('发布合作意愿失败，请稍后重试'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-          );
+          print('发布失败，显示错误提示');
+          // 发布失败，显示提示
+          FeedbackService.showErrorToast(context, '发布合作意愿失败，请稍后重试');
         }
       } catch (e) {
         print('表单提交过程中出现异常: $e');
@@ -290,20 +244,10 @@ class _CreateTalentPostPageState extends State<CreateTalentPostPage> {
             _isLoading = false;
           });
         
-          // 显示错误对话框
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('错误'),
-              content: Text('发生错误: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-          );
+          // 显示错误提示
+          if (mounted) {
+            FeedbackService.showErrorToast(context, '发生错误: $e');
+          }
         }
       }
     }

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:leancloud_storage/leancloud.dart';
-import '../../../models/user_model.dart';
-import '../../../services/post_service.dart';
-import 'dart:async';
-import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'dart:convert';
+import 'package:leancloud_storage/leancloud.dart';
 import 'package:timeago/timeago.dart' as timeago;
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
+import '../../../services/post_service.dart';
+import '../../../models/user_model.dart';
+import '../../../utils/toast_util.dart'; // 导入ToastUtil
 
 class PostDetailPage extends StatefulWidget {
   final String postId;
@@ -68,9 +68,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
         setState(() {
           _isLoading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('加载帖子数据失败: $e')),
-        );
+        ToastUtil.showError(context, '加载帖子数据失败: $e');
       }
     }
   }
@@ -102,15 +100,15 @@ class _PostDetailPageState extends State<PostDetailPage> {
           }
         });
         
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_isCollected ? '已收藏' : '已取消收藏')),
+        // 使用ToastUtil显示通知
+        ToastUtil.showSuccess(
+          context, 
+          _isCollected ? '已收藏' : '已取消收藏'
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('操作失败: $e')),
-        );
+        ToastUtil.showError(context, '操作失败: $e');
       }
     }
   }
@@ -158,9 +156,7 @@ class _PostDetailPageState extends State<PostDetailPage> {
     final Uri url = Uri.parse(urlString);
     if (!await url_launcher.launchUrl(url)) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('无法打开 $urlString')),
-        );
+        ToastUtil.showError(context, '无法打开 $urlString');
       }
     }
   }

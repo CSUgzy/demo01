@@ -261,14 +261,164 @@ class PostService {
           post['collectionCount'] = currentCount + 1;
           await post.save();
           print('帖子收藏计数增加到: ${currentCount + 1}');
+           
+          // 添加新功能：为帖子发布者创建通知
+          final LCUser? postPublisher = post['publisher'] as LCUser?;
+           
+          // 确认有发布者，并且不是用户自己收藏自己的帖子
+          if (postPublisher != null && currentUser.objectId != postPublisher.objectId) {
+            LCObject notification = LCObject('Notification');
+             
+            // 准备通知的标题和内容
+            String notificationContent = '';
+            String title = "您收到了新的互动";
+            if (postType == 'Project') {
+              final projectName = post['projectName'] ?? '您的项目';
+              notificationContent = '有人收藏了您的项目《$projectName》';
+              notification['relatedProjectPost'] = post;
+            } else {
+              final talentTitle = post['title'] ?? '您的合作意愿';
+              notificationContent = '有人对您发布的"$talentTitle"感兴趣';
+              notification['relatedTalentPost'] = post;
+            }
+
+            notification['recipient'] = postPublisher; // 通知接收者是帖子的发布者
+            notification['type'] = 'interaction_collected'; // 互动类型：被收藏
+            notification['title'] = title;
+            notification['content'] = notificationContent;
+            notification['isRead'] = false; // 初始状态为未读
+             
+            // 设置ACL，这是保证安全的关键
+            LCACL acl = LCACL();
+            acl.setPublicReadAccess(false);  // 公开不可读
+            acl.setUserIdReadAccess(postPublisher.objectId!, true);  // 只有接收者可读
+            acl.setPublicWriteAccess(false); // 公开不可写
+            acl.setUserIdWriteAccess(postPublisher.objectId!, true); // 只有接收者可写
+            notification.acl = acl;
+
+            // 保存这条配置好权限的通知对象
+            await notification.save();
+            print('已为帖子发布者创建收藏通知');
+          }
         } catch (e) {
-          print('更新帖子收藏计数失败: $e');
+          print('更新帖子收藏计数或创建通知失败: $e');
         }
       }
       return true;
     } catch (e) {
       print('Error toggling collection status: $e');
       return false;
+    }
+  }
+
+  // 添加新方法：使用完整帖子对象的收藏/取消收藏功能
+  Future<bool> togglePostCollectionWithObject(LCObject postObject, bool isCurrentlyCollected) async {
+    LCUser? currentUser = await LCUser.getCurrent();
+    if (currentUser == null) return false;
+
+    final String postId = postObject.objectId!;
+    final String postType = postObject.className == 'ProjectPost' ? 'Project' : 'Talent';
+
+    try {
+      if (isCurrentlyCollected) {
+        // --- 取消收藏逻辑 (此部分保持不变) ---
+        // 通过查询找到并删除对应的 Collection 记录
+        LCQuery<LCObject> query = LCQuery('Collection');
+        query.whereEqualTo('user', currentUser);
+        query.whereEqualTo('postType', postType);
+         
+        // 根据您的数据模型二选一
+        if (postType == 'Project') {
+            query.whereEqualTo('collectedProjectPost', LCObject.createWithoutData('ProjectPost', postId));
+        } else {
+            query.whereEqualTo('collectedTalentPost', LCObject.createWithoutData('TalentPost', postId));
+        }
+
+        LCObject? collectionEntry = await query.first();
+        if (collectionEntry != null) {
+          await collectionEntry.delete();
+        }
+         
+        // 减少帖子的收藏计数
+        try {
+          int currentCount = postObject['collectionCount'] as int? ?? 0;
+          if (currentCount > 0) {
+            postObject['collectionCount'] = currentCount - 1;
+            await postObject.save();
+            print('帖子收藏计数减少到: ${currentCount - 1}');
+          }
+        } catch (e) {
+          print('更新帖子收藏计数失败: $e');
+        }
+      } else {
+        // --- 收藏帖子的新逻辑 (两步走) ---
+
+        // **步骤一：保存收藏记录 (和以前一样)**
+        LCObject collectionEntry = LCObject('Collection');
+        collectionEntry['user'] = currentUser;
+        collectionEntry['postType'] = postType;
+         
+        // 根据您的数据模型二选一
+        if (postType == 'Project') {
+            collectionEntry['collectedProjectPost'] = LCObject.createWithoutData('ProjectPost', postId);
+        } else {
+            collectionEntry['collectedTalentPost'] = LCObject.createWithoutData('TalentPost', postId);
+        }
+        await collectionEntry.save();
+         
+        // 增加帖子的收藏计数
+        try {
+          int currentCount = postObject['collectionCount'] as int? ?? 0;
+          postObject['collectionCount'] = currentCount + 1;
+          await postObject.save();
+          print('帖子收藏计数增加到: ${currentCount + 1}');
+        } catch (e) {
+          print('更新帖子收藏计数失败: $e');
+        }
+
+        // **步骤二：在客户端直接创建通知记录**
+        final LCUser? postPublisher = postObject['publisher'] as LCUser?;
+         
+        // 确认有发布者，并且不是用户自己收藏自己的帖子
+        if (postPublisher != null && currentUser.objectId != postPublisher.objectId) {
+          LCObject notification = LCObject('Notification');
+           
+          // 准备通知的标题和内容
+          String notificationContent = '';
+          String title = "您收到了新的互动";
+          if (postType == 'Project') {
+            final projectName = postObject['projectName'] ?? '您的项目';
+            notificationContent = '有人收藏了您的项目《$projectName》';
+            notification['relatedProjectPost'] = postObject;
+          } else {
+            final talentTitle = postObject['title'] ?? '您的合作意愿';
+            notificationContent = '有人对您发布的"$talentTitle"感兴趣';
+            notification['relatedTalentPost'] = postObject;
+          }
+
+          notification['recipient'] = postPublisher; // 通知接收者是帖子的发布者
+          notification['type'] = 'interaction_collected'; // 互动类型：被收藏
+          notification['title'] = title;
+          notification['content'] = notificationContent;
+          notification['isRead'] = false; // 初始状态为未读
+           
+          // 设置ACL，这是保证安全的关键
+          LCACL acl = LCACL();
+          acl.setPublicReadAccess(false);  // 公开不可读
+          acl.setUserIdReadAccess(postPublisher.objectId!, true);  // 只有接收者可读
+          acl.setPublicWriteAccess(false); // 公开不可写
+          acl.setUserIdWriteAccess(postPublisher.objectId!, true); // 只有接收者可写
+          notification.acl = acl;
+
+          // 保存这条配置好权限的通知对象
+          await notification.save();
+          print('已为帖子发布者创建收藏通知');
+        }
+      }
+      return true; // 整个操作成功
+    } catch (e) {
+      print('Error toggling collection or creating notification: $e');
+      return false; // 操作失败
     }
   }
 

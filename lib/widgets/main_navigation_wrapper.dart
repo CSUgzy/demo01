@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../pages/screens/home/home_page.dart';
 import '../pages/screens/my/my_page.dart';
 import '../pages/screens/postings/select_post_type_page.dart';
+import '../services/update_service.dart';
 
 class MainNavigationWrapper extends StatefulWidget {
   const MainNavigationWrapper({super.key});
@@ -19,6 +21,78 @@ class _MainNavigationWrapperState extends State<MainNavigationWrapper> {
     const HomePage(),
     const MyPage(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // 在组件加载后执行强制更新检查
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkForForceUpdate();
+    });
+  }
+
+  // 检查强制更新
+  Future<void> _checkForForceUpdate() async {
+    final updateInfo = await UpdateService.checkForForceUpdate();
+    if (updateInfo != null && mounted) {
+      _showUpdateDialog(context, updateInfo);
+    }
+  }
+
+  // 显示更新对话框
+  void _showUpdateDialog(BuildContext context, UpdateInfo updateInfo) {
+    showDialog(
+      context: context,
+      barrierDismissible: !updateInfo.isForceUpdate,
+      builder: (BuildContext context) {
+        return WillPopScope(
+          onWillPop: () async => !updateInfo.isForceUpdate,
+          child: AlertDialog(
+            title: Text("发现新版本 v${updateInfo.latestVersionName}"),
+            content: SingleChildScrollView(
+              child: Text(updateInfo.updateLog),
+            ),
+            actions: <Widget>[
+              if (!updateInfo.isForceUpdate)
+                // 非强制更新时显示"稍后提醒"按钮
+                TextButton(
+                  child: const Text("稍后提醒"),
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                )
+              else
+                // 强制更新时显示"取消"按钮，点击也会退出应用
+                TextButton(
+                  child: const Text("取消"),
+                  onPressed: () {
+                    // 退出应用
+                    SystemNavigator.pop();
+                  },
+                ),
+              TextButton(
+                child: const Text("立即更新"),
+                onPressed: () {
+                  if (updateInfo.isForceUpdate) {
+                    // 强制更新时，先启动更新，然后退出应用
+                    UpdateService.performUpdate(context, updateInfo);
+                    // 延迟一小段时间后退出应用，确保更新操作已经启动
+                    Future.delayed(const Duration(seconds: 1), () {
+                      SystemNavigator.pop();
+                    });
+                  } else {
+                    // 非强制更新时，关闭对话框并执行更新
+                    Navigator.of(context).pop();
+                    UpdateService.performUpdate(context, updateInfo);
+                  }
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

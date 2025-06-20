@@ -89,7 +89,7 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
         final email = _emailController.text.trim();
         final password = _passwordController.text;
         
-        final user = await _authService.loginWithEmailPassword(email, password);
+        final (user, errorMsg) = await _authService.loginWithEmailPassword(email, password);
         
         if (user != null && mounted) {
           // 检查邮箱验证状态
@@ -109,12 +109,12 @@ class _EmailLoginPageState extends State<EmailLoginPage> {
               '/profile-setup-step${profileStage + 1}'
             );
           } else {
-            Navigator.pushReplacementNamed(context, '/home');
+            Navigator.pushReplacementNamed(context, '/main');
           }
         } else if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('登录失败：用户名或密码错误'),
+              content: Text(errorMsg ?? '登录失败：用户名或密码错误'),
               backgroundColor: Theme.of(context).colorScheme.error,
             ),
           );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:leancloud_storage/leancloud.dart';
 import '../../../services/post_service.dart';
 import '../detail/post_detail_page.dart';
+import '../../../utils/feedback_service.dart';
 
 class MyCollectionsPage extends StatefulWidget {
   const MyCollectionsPage({super.key});
@@ -50,25 +51,15 @@ class _MyCollectionsPageState extends State<MyCollectionsPage> {
     final String postType = postObject.className == 'ProjectPost' ? 'Project' : 'Talent';
     
     // 确认对话框
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认取消收藏'),
-        content: const Text('确定要取消收藏这个帖子吗？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('确定'),
-          ),
-        ],
-      ),
+    final bool confirm = await FeedbackService.showConfirmationDialog(
+      context,
+      title: '确认取消收藏',
+      content: '确定要取消收藏这个帖子吗？',
+      confirmText: '确定',
+      cancelText: '取消',
     );
     
-    if (confirm == true) {
+    if (confirm) {
       try {
         // 取消收藏
         final success = await _postService.toggleCollectionStatus(postId, postType, true);
@@ -93,23 +84,17 @@ class _MyCollectionsPageState extends State<MyCollectionsPage> {
           });
           
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('已取消收藏')),
-            );
+            FeedbackService.showSuccessToast(context, '已取消收藏');
           }
         } else {
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('取消收藏失败，请重试')),
-            );
+            FeedbackService.showErrorToast(context, '取消收藏失败，请重试');
           }
         }
       } catch (e) {
         print('取消收藏时出错: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('操作失败: $e')),
-          );
+          FeedbackService.showErrorToast(context, '操作失败: $e');
         }
       }
     }

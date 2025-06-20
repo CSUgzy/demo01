@@ -5,6 +5,7 @@ import '../../../constants/predefined_tags.dart';
 import '../../../constants/cooperation_options.dart';
 import '../../../services/post_service.dart';
 import '../../../widgets/custom_dropdown_select.dart';
+import '../../../utils/feedback_service.dart';
 
 // 定义一些全局样式常量
 const Color borderColor = Color(0xFFE2E8F0); // 边框颜色 - 浅灰色
@@ -200,21 +201,15 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
         if (result && mounted) {
           // 成功发布，直接返回
           Navigator.of(context).pop();
+          // 使用FeedbackService显示成功提示
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted) {
+              FeedbackService.showSuccessToast(context, '项目需求发布成功！');
+            }
+          });
         } else if (mounted) {
-          // 发布失败，显示对话框
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('提示'),
-              content: const Text('项目需求发布失败，请稍后重试'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-          );
+          // 发布失败，显示提示
+          FeedbackService.showErrorToast(context, '项目需求发布失败，请稍后重试');
         }
       } catch (e) {
         // 设置加载状态为false
@@ -222,21 +217,9 @@ class _CreateProjectPostPageState extends State<CreateProjectPostPage> {
           _isLoading = false;
         });
         
-        // 显示错误对话框
+        // 显示错误提示
         if (mounted) {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('错误'),
-              content: Text('发生错误: $e'),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text('确定'),
-                ),
-              ],
-            ),
-          );
+          FeedbackService.showErrorToast(context, '发生错误: $e');
         }
       }
     }

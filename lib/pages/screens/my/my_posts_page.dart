@@ -6,6 +6,7 @@ import '../../../services/post_service.dart';
 import '../detail/post_detail_page.dart';
 import 'edit_post_page.dart'; // 导入编辑页面
 import 'dart:convert';
+import '../../../utils/feedback_service.dart';
 
 // 标签类型枚举 - 保留用于其他地方可能的引用
 enum TagType {
@@ -136,25 +137,15 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
     final String postId = post.objectId!;
     
     // 确认对话框
-    final bool? confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('确认删除'),
-        content: const Text('确定要删除这个帖子吗？此操作不可撤销。'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('取消'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('删除', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
+    final bool confirm = await FeedbackService.showConfirmationDialog(
+      context,
+      title: '确认删除',
+      content: '确定要删除这个帖子吗？此操作不可撤销。',
+      confirmText: '删除',
+      cancelText: '取消',
     );
     
-    if (confirm == true) {
+    if (confirm) {
       try {
         // 调用删除方法
         final success = await _postService.deletePost(postId, className);
@@ -174,24 +165,18 @@ class _MyPostsPageState extends State<MyPostsPage> with SingleTickerProviderStat
           
           // 显示成功提示
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('帖子删除成功')),
-            );
+            FeedbackService.showSuccessToast(context, '帖子删除成功');
           }
         } else {
           // 显示错误提示
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('删除失败，请重试')),
-            );
+            FeedbackService.showErrorToast(context, '删除失败，请重试');
           }
         }
       } catch (e) {
         print('Error deleting post: $e');
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('删除时出错: $e')),
-          );
+          FeedbackService.showErrorToast(context, '删除时出错: $e');
         }
       }
     }
