@@ -184,7 +184,7 @@ class _AboutUsPageState extends State<AboutUsPage> {
             Column(
               children: [
                 Text(
-                  "Copyright © 2025 YourCompany. All Rights Reserved.",
+                  "Copyright © 2025 良师谊友. All Rights Reserved.",
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey,
                   ),

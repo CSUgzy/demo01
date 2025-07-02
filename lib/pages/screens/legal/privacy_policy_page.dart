@@ -259,7 +259,7 @@ class PrivacyPolicyPage extends StatelessWidget {
             
             // 可选择的邮箱
             const SelectableText(
-              'contact@liangsyiyou.com',
+              'support@vosacosg.com',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.bold,

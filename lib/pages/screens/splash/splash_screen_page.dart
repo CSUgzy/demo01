@@ -189,7 +189,7 @@ class _SplashScreenPageState extends State<SplashScreenPage> with SingleTickerPr
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Image.asset(
-                    'assets/icons/logo.png',
+                    'assets/icons/logo-k.png',
                     width: 120,
                     height: 120,
                     errorBuilder: (context, error, stackTrace) {
