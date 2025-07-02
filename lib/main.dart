@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:leancloud_storage/leancloud.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:flutter/services.dart';
+import 'dart:async';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 import 'pages/screens/auth/email_registration_page.dart';
 import 'pages/screens/auth/email_login_page.dart';
 import 'pages/screens/auth/email_forgot_password_page.dart';
@@ -12,32 +16,84 @@ import 'widgets/main_navigation_wrapper.dart';
 import 'pages/screens/postings/select_post_type_page.dart';
 import 'services/notification_service.dart';
 import 'pages/screens/splash/splash_screen_page.dart';
+import 'pages/screens/legal/user_agreement_page.dart';
+import 'pages/screens/legal/privacy_policy_page.dart';
 
-void main() {
-  // 优先启动UI，然后在后台初始化其他服务
-  runApp(const MyApp());
-  
-  // 在UI显示后进行初始化工作
-  _initializeServices();
+// 全局错误日志文件路径
+String? _errorLogPath;
+
+// 写入错误日志到文件
+Future<void> _writeErrorToFile(String error) async {
+  try {
+    if (_errorLogPath == null) {
+      final directory = await getApplicationDocumentsDirectory();
+      _errorLogPath = '${directory.path}/error_log.txt';
+    }
+    
+    final file = File(_errorLogPath!);
+    final timestamp = DateTime.now().toString();
+    await file.writeAsString('[$timestamp] $error\n', mode: FileMode.append);
+    print('错误已记录到: $_errorLogPath');
+  } catch (e) {
+    print('写入错误日志失败: $e');
+  }
 }
 
-// 将初始化工作放到后台执行
-Future<void> _initializeServices() async {
+void main() async {
+  // 确保Flutter引擎初始化完成
   WidgetsFlutterBinding.ensureInitialized();
   
-  // 初始化 LeanCloud
-  LeanCloud.initialize(
-    'kH93P959BRFqDK4JZZuAd14f-gzGzoHsz',
-    'tUlZjd7liUyz9YvyT9AuF6IK',
-    server: 'https://kh93p959.lc-cn-n1-shared.com',
-    queryCache: LCQueryCache(),
+  // 设置应用方向
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+  
+  // 设置状态栏样式
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+    ),
   );
   
-  // 检查并初始化通知系统
-  await _initializeNotificationSystem();
+  // 设置全局错误处理
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    final errorMsg = 'Flutter错误: ${details.exception}, ${details.stack}';
+    print(errorMsg);
+    _writeErrorToFile(errorMsg);
+  };
   
-  // 初始化timeago中文支持
-  timeago.setLocaleMessages('zh_CN', timeago.ZhCnMessages());
+  // 捕获未处理的异步错误
+  WidgetsBinding.instance.platformDispatcher.onError = (error, stack) {
+    final errorMsg = '未捕获的异步错误: $error\n$stack';
+    print(errorMsg);
+    _writeErrorToFile(errorMsg);
+    return true;
+  };
+  
+  // 简化启动过程，直接运行应用，在应用内部初始化服务
+  runApp(const MyApp());
+}
+
+// 初始化LeanCloud - 移到SplashScreen中进行
+Future<void> initializeLeanCloud() async {
+  try {
+    // 初始化 LeanCloud
+    LeanCloud.initialize(
+      'kH93P959BRFqDK4JZZuAd14f-gzGzoHsz',
+      'tUlZjd7liUyz9YvyT9AuF6IK',
+      server: 'https://kh93p959.lc-cn-n1-shared.com',
+      queryCache: LCQueryCache(),
+    );
+    print('LeanCloud初始化成功');
+    return Future.value();
+  } catch (e) {
+    print('LeanCloud初始化失败: $e');
+    // 不再重新抛出异常，允许应用继续运行
+    return Future.value();
+  }
 }
 
 // 初始化通知系统
@@ -132,30 +188,8 @@ class MyApp extends StatelessWidget {
         '/profile-setup-step3': (context) => const ProfileSetupStep3Page(),
         '/forgot-password': (context) => const EmailForgotPasswordPage(),
         '/select-post-type': (context) => const SelectPostTypePage(),
-      },
-    );
-  }
-  
-  // 根据登录状态决定显示登录页面还是主导航页面，现在由SplashScreenPage负责
-  Widget _buildHomeScreen() {
-    // 检查用户是否已登录
-    return FutureBuilder<LCUser?>(
-      future: LCUser.getCurrent(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
-        }
-        
-        // 如果用户已登录，显示主导航页面；否则显示登录页面
-        if (snapshot.hasData && snapshot.data != null) {
-          return const MainNavigationWrapper();
-        } else {
-          return const EmailLoginPage();
-        }
+        '/user-agreement': (context) => const UserAgreementPage(),
+        '/privacy-policy': (context) => const PrivacyPolicyPage(),
       },
     );
   }

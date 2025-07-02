@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:flutter/gestures.dart';
 import '../../../services/auth_service.dart';
 
 class EmailRegistrationPage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _EmailRegistrationPageState extends State<EmailRegistrationPage> {
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  bool _isAgreedToTerms = false;
 
   @override
   void dispose() {
@@ -237,8 +239,56 @@ class _EmailRegistrationPageState extends State<EmailRegistrationPage> {
                           ),
                           const SizedBox(height: 24),
 
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Checkbox(
+                                value: _isAgreedToTerms,
+                                onChanged: (bool? value) {
+                                  setState(() {
+                                    _isAgreedToTerms = value ?? false;
+                                  });
+                                },
+                              ),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    text: '我已阅读并同意',
+                                    style: TextStyle(color: Colors.grey[600]),
+                                    children: <TextSpan>[
+                                      TextSpan(
+                                        text: '《用户协议》',
+                                        style: TextStyle(
+                                          color: Theme.of(context).primaryColor,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.pushNamed(context, '/user-agreement');
+                                          },
+                                      ),
+                                      const TextSpan(text: '和'),
+                                      TextSpan(
+                                        text: '《隐私政策》',
+                                        style: TextStyle(
+                                          color: Theme.of(context).primaryColor,
+                                          decoration: TextDecoration.underline,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.pushNamed(context, '/privacy-policy');
+                                          },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 24),
+
                           FilledButton(
-                            onPressed: _isLoading ? null : _handleRegistration,
+                            onPressed: _isLoading || !_isAgreedToTerms ? null : _handleRegistration,
                             child: _isLoading
                                 ? const SizedBox(
                                     width: 20,
